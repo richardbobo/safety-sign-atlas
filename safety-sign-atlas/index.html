@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全标志图集管理系统 - 改进版</title>
+    <style>
+        body { font-family: Arial; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .header { background: #667eea; color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .nav button { padding: 10px 20px; background: white; border: 2px solid #667eea; border-radius: 5px; cursor: pointer; font-weight: bold; color: #667eea; }
+        .nav button.active { background: #667eea; color: white; }
+        .page { display: none; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .page.active { display: block; }
+        h2 { color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px; margin-bottom: 20px; }
+        .btn { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn:hover { background: #5a67d8; }
+        .btn-success { background: #48bb78; }
+        .btn-secondary { background: #6c757d; }
+        .sign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
+        .sign-card { border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; background: white; }
+        .sign-card:hover { border-color: #667eea; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .sign-image { width: 100%; height: 150px; object-fit: contain; background: #f8f9fa; border-radius: 5px; margin-bottom: 10px; }
+        .sign-type { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin: 5px 0; }
+        .warning { background: #fef3c7; color: #92400e; }
+        .prohibition { background: #fee2e2; color: #991b1b; }
+        .instruction { background: #dbeafe; color: #1e40af; }
+        .information { background: #d1fae5; color: #065f46; }
+        .message { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .form-control { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .image-preview { max-width: 200px; max-height: 200px; margin: 10px 0; border: 2px dashed #ddd; border-radius: 5px; padding: 5px; }
+        .upload-area { border: 2px dashed #667eea; border-radius: 8px; padding: 30px; text-align: center; background: #f8f9fa; cursor: pointer; margin: 15px 0; }
+        .upload-area:hover { background: #e9ecef; }
+        .upload-icon { font-size: 2rem; color: #667eea; margin-bottom: 10px; }
+        
+        /* 步骤指示器 */
+        .step-indicator { display: flex; justify-content: space-between; margin: 30px 0; }
+        .step { flex: 1; text-align: center; padding: 10px; position: relative; }
+        .step-number { width: 30px; height: 30px; line-height: 30px; border-radius: 50%; background: #e9ecef; color: #666; margin: 0 auto 5px; }
+        .step.active .step-number { background: #667eea; color: white; }
+        .step.completed .step-number { background: #48bb78; color: white; }
+        .step-title { font-size: 0.9rem; color: #666; }
+        .step.active .step-title { color: #667eea; font-weight: bold; }
+        .step-content { display: none; }
+        .step-content.active { display: block; }
+        
+        /* 类型选择器 */
+        .type-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+        .type-option { border: 2px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; }
+        .type-option:hover { border-color: #667eea; background: #f0f9ff; }
+        .type-option.selected { border-color: #667eea; background: #f0f9ff; }
+        .type-color { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 10px; }
+        .type-warning .type-color { background: #fef3c7; border: 2px solid #92400e; }
+        .type-prohibition .type-color { background: #fee2e2; border: 2px solid #991b1b; }
+        .type-instruction .type-color { background: #dbeafe; border: 2px solid #1e40af; }
+        .type-information .type-color { background: #d1fae5; border: 2px solid #065f46; }
+        
+        /* 步骤按钮 */
+        .step-buttons { display: flex; justify-content: space-between; margin-top: 30px; }
+        
+        /* 删除按钮和对话框 */
+        .btn-danger { background: #e53e3e; }
+        .btn-danger:hover { background: #c53030; }
+        .btn-delete { 
+            background: none; 
+            border: none; 
+            color: #999; 
+            font-size: 1.2rem; 
+            cursor: pointer; 
+            padding: 5px; 
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .btn-delete:hover { 
+            color: #e53e3e; 
+            background: #fed7d7;
+            transform: scale(1.1);
+        }
+        .warning-message { background: #fef3c7; color: #92400e; border-left: 4px solid #d69e2e; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        
+        /* 确认删除对话框 */
+        .delete-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-modal.active {
+            display: flex;
+        }
+        .delete-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .delete-icon {
+            font-size: 3rem;
+            color: #e53e3e;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .delete-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        /* 场景列表样式 */
+        .scene-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        .scene-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .scene-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .scene-code {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #333;
+        }
+        .scene-name {
+            font-size: 1.1rem;
+            color: #555;
+            margin: 5px 0;
+        }
+        .scene-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-view { background: #dbeafe; color: #1e40af; }
+        .btn-view:hover { background: #bfdbfe; }
+        .btn-edit { background: #fef3c7; color: #92400e; }
+        .btn-edit:hover { background: #fde68a; }
+        .btn-delete-scene { background: #fee2e2; color: #991b1b; }
+        .btn-delete-scene:hover { background: #fecaca; }
+        .btn-add-sign { background: #d1fae5; color: #065f46; }
+        .btn-add-sign:hover { background: #a7f3d0; }
+        
+        /* 危险源标签样式 */
+        .hazard-tag.selected {
+            background: #667eea !important;
+            color: white !important;
+            border-color: #667eea !important;
+        }
+        
+        /* 自定义危险源标签样式 */
+        .custom-tag.selected {
+            background: #9333ea !important;
+            color: white !important;
+            border-color: #7c3aed !important;
+        }
+        
+        .custom-tag button:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+        }
+        .hazard-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        
+        /* 编辑场景模态框 */
+        .edit-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .edit-modal.active {
+            display: flex;
+        }
+        .edit-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        /* 添加标志模态框样式 */
+        .add-signs-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .add-signs-modal.active {
+            display: flex;
+        }
+        
+        .add-signs-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            width: 700px;
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        .sign-type-filter {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .sign-type-filter.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .sign-type-filter:hover {
+            border-color: #007bff;
+        }
+        
+        .sign-card-selectable {
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 10px;
+        }
+        
+        .sign-card-selectable:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.1);
+        }
+        
+        .sign-card-selectable.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .selected-sign-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .selected-sign-info {
+            flex: 1;
+        }
+        
+        .selected-sign-code {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .selected-sign-name {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .remove-sign-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .remove-sign-btn:hover {
+            background: #c82333;
+        }
+        
+        .btn-close:hover {
+            color: #333;
+        }
+        
+        .add-sign-btn {
+            transition: all 0.2s;
+        }
+        
+        .add-sign-btn:hover {
+            background: #0056b3 !important;
+            transform: scale(1.1);
+        }
+        
+        .sign-card-selectable {
+            transition: all 0.2s;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid transparent;
+        }
+        
+        .sign-card-selectable:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.1);
+        }
+        
+        .sign-card-selectable.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .preview-sign-item {
+            transition: all 0.2s;
+        }
+        
+        .preview-sign-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .remove-preview-btn {
+            transition: all 0.2s;
+            opacity: 0.8;
+        }
+        
+        .remove-preview-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>安全标志图集管理系统</h1>
+        <p>改进版 - 优化添加标志流程</p>
+    </div>
+    
+    <div class="nav">
+        <button class="active" onclick="showPage('sign-library')">🏷️ 标志图集</button>
+        <button onclick="showPage('create-scene')">➕ 创建场景</button>
+        <button onclick="showPage('scene-list')">📋 场景列表</button>
+    </div>
+    
+    <!-- 标志图集 -->
+    <div id="sign-library" class="page active">
+        <h2>标志图集管理</h2>
+        <p>管理所有安全标志，按类型分类：警告(黄)、禁止(红)、指令(蓝)、提示(绿)</p>
+        
+        <div style="margin: 20px 0;">
+            <button class="btn" onclick="loadSigns()">刷新标志列表</button>
+            <button class="btn btn-success" onclick="showAddSignForm()">添加新标志（优化流程）</button>
+        </div>
+        
+        <div id="signs-container">
+            <div class="loading">加载标志图集...</div>
+        </div>
+        
+        <!-- 添加标志表单（新流程） -->
+        <div id="add-sign-form" style="display: none; margin-top: 30px; padding: 25px; background: #f8f9fa; border-radius: 10px;">
+            <h3 style="margin-bottom: 20px;">📷 添加新标志（优化流程）</h3>
+            
+            <!-- 步骤指示器 -->
+            <div class="step-indicator">
+                <div id="step-1" class="step active">
+                    <div class="step-number">1</div>
+                    <div class="step-title">上传图片</div>
+                </div>
+                <div id="step-2" class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">选择类型</div>
+                </div>
+                <div id="step-3" class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">输入信息</div>
+                </div>
+                <div id="step-4" class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">确认添加</div>
+                </div>
+            </div>
+            
+            <!-- 步骤1：上传图片 -->
+            <div id="step-1-content" class="step-content active">
+                <div class="form-group">
+                    <label class="form-label">第一步：上传标志图片</label>
+                    <div class="upload-area" onclick="document.getElementById('image-upload').click()">
+                        <div class="upload-icon">📷</div>
+                        <div>点击上传标志图片</div>
+                        <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">支持 JPG、PNG 格式，建议尺寸 300x300px</div>
+                        <div style="font-size: 0.9rem; color: #667eea; margin-top: 10px; font-weight: bold;">上传后图片会在后续所有步骤中显示</div>
+                    </div>
+                    <input type="file" id="image-upload" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                    
+                    <div id="image-preview-container" style="display: none;">
+                        <div style="font-weight: bold; margin: 10px 0 5px 0;">图片预览：</div>
+                        <img id="image-preview" class="image-preview" alt="图片预览">
+                        <div style="margin-top: 5px;">
+                            <button type="button" class="btn btn-secondary" onclick="removeImage()" style="padding: 5px 10px; font-size: 0.9rem;">重新上传</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 步骤2：选择类型 -->
+            <div id="step-2-content" class="step-content">
+                <div class="form-group">
+                    <label class="form-label">第二步：选择标志类型/颜色</label>
+                    <div class="type-selector">
+                        <div class="type-option type-warning" onclick="selectType('warning')">
+                            <div class="type-color"></div>
+                            <div>警告标志</div>
+                            <div style="font-size: 0.9rem; color: #92400e;">黄色</div>
+                        </div>
+                        <div class="type-option type-prohibition" onclick="selectType('prohibition')">
+                            <div class="type-color"></div>
+                            <div>禁止标志</div>
+                            <div style="font-size: 0.9rem; color: #991b1b;">红色</div>
+                        </div>
+                        <div class="type-option type-instruction" onclick="selectType('instruction')">
+                            <div class="type-color"></div>
+                            <div>指令标志</div>
+                            <div style="font-size: 0.9rem; color: #1e40af;">蓝色</div>
+                        </div>
+                        <div class="type-option type-information" onclick="selectType('information')">
+                            <div class="type-color"></div>
+                            <div>提示标志</div>
+                            <div style="font-size: 0.9rem; color: #065f46;">绿色</div>
+                        </div>
+                    </div>
+                    <select id="sign-type" class="form-control" style="display: none;">
+                        <option value="warning">警告 (黄色)</option>
+                        <option value="prohibition">禁止 (红色)</option>
+                        <option value="instruction">指令 (蓝色)</option>
+                        <option value="information">提示 (绿色)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- 步骤3：输入信息 -->
+            <div id="step-3-content" class="step-content">
+                <div class="form-group">
+                    <label class="form-label">第三步：输入标志信息</label>
+                    <div id="generated-code"></div>
+                    <input type="hidden" id="sign-code">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">标志名称 *</label>
+                    <input type="text" id="sign-name" class="form-control" placeholder="例如: 注意安全, 禁止吸烟">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">标准尺寸</label>
+                    <input type="text" id="standard-size" class="form-control" placeholder="例如: 300x300mm" value="300x300mm">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">材质</label>
+                    <input type="text" id="material" class="form-control" placeholder="例如: 铝板反光" value="铝板反光">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">是否是PPE标志？</label>
+                    <div style="display: flex; gap: 15px; margin-top: 5px;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="is_ppe" value="1" id="is_ppe_yes" style="margin: 0;">
+                            <span>是 (个人防护装备)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="radio" name="is_ppe" value="0" id="is_ppe_no" checked style="margin: 0;">
+                            <span>否 (普通安全标志)</span>
+                        </label>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #666; margin-top: 5px;">
+                        PPE标志通常是蓝色的指令标志，如：必须戴安全帽、必须戴防护眼镜等
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">描述</label>
+                    <textarea id="description" class="form-control" rows="3" placeholder="标志的详细说明"></textarea>
+                </div>
+            </div>
+            
+            <!-- 步骤4：确认 -->
+            <div id="step-4-content" class="step-content">
+                <div class="form-group">
+                    <label class="form-label">第四步：确认信息</label>
+                    <div style="background: #f0f9ff; padding: 20px; border-radius: 8px;">
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+                            <div>
+                                <div style="font-weight: bold; color: #555;">图片预览：</div>
+                                <img id="confirm-image" class="image-preview" alt="确认图片">
+                            </div>
+                            <div style="flex: 1;">
+                                <div><strong>标志代码：</strong> <span id="confirm-code"></span></div>
+                                <div><strong>标志名称：</strong> <span id="confirm-name"></span></div>
+                                <div><strong>标志类型：</strong> <span id="confirm-type"></span></div>
+                                <div><strong>标准尺寸：</strong> <span id="confirm-size"></span></div>
+                                <div><strong>材质：</strong> <span id="confirm-material"></span></div>
+                                <div><strong>PPE标志：</strong> <span id="confirm-ppe"></span></div>
+                                <div><strong>描述：</strong> <span id="confirm-description"></span></div>
+                            </div>
+                        </div>
+                        <div style="color: #666; font-size: 0.9rem;">
+                            确认无误后点击"添加标志"按钮完成添加
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 步骤按钮 -->
+            <div class="step-buttons">
+                <button id="prev-step" class="btn btn-secondary" onclick="prevStep()" style="display: none;">上一步</button>
+                <button id="next-step" class="btn" onclick="nextStep()">下一步</button>
+                <button id="submit-sign" class="btn btn-success" onclick="addNewSign()" style="display: none;">添加标志</button>
+                <button class="btn btn-secondary" onclick="hideAddSignForm()">取消</button>
+            </div>
+            
+            <div id="add-sign-message" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+    
+    <!-- 创建场景 -->
+    <div id="create-scene" class="page">
+        <h2>创建新场景</h2>
+        <p>创建安全标志张贴场景（优化表单）</p>
+        
+        <div class="form-group">
+            <label class="form-label">场景编码</label>
+            <input type="text" id="scene-code" class="form-control" placeholder="系统自动生成" readonly style="background: #f8f9fa;">
+            <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">系统自动生成唯一编码，格式: SCENE-001</div>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">场景名称 *</label>
+            <input type="text" id="scene-name" class="form-control" placeholder="例如: 油漆车间入口、配电室门口">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">所属部门 *</label>
+            <select id="scene-dept" class="form-control">
+                <option value="">请选择部门</option>
+                <option value="维修">维修</option>
+                <option value="生产">生产</option>
+                <option value="工艺">工艺</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">危险源标签</label>
+            <div style="margin-bottom: 10px; font-size: 0.9rem; color: #666;">选择适用的危险源标签（可多选）：</div>
+            <div id="hazard-tags-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                <!-- 危险源标签将通过JavaScript动态生成 -->
+            </div>
+            
+            <!-- 自定义危险源标签 -->
+            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                <div style="font-weight: bold; margin-bottom: 10px; color: #333;">自定义危险源标签</div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="custom-hazard-input" class="form-control" placeholder="输入新的危险源标签，如：生物危害、静电危险" style="flex: 1;">
+                    <button type="button" onclick="addCustomHazard()" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">添加</button>
+                </div>
+                <div style="font-size: 0.85rem; color: #666;">
+                    提示：自定义标签将保存到系统中，后续可直接选择使用
+                </div>
+                
+                <!-- 自定义标签显示区域 -->
+                <div id="custom-hazards-container" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px;">
+                    <!-- 自定义标签将动态显示在这里 -->
+                </div>
+            </div>
+            
+            <input type="hidden" id="scene-hazards">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">位置描述（可选）</label>
+            <input type="text" id="scene-location" class="form-control" placeholder="例如：车间东侧入口、二楼走廊尽头">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">安装注意事项</label>
+            <textarea id="scene-notes" class="form-control" rows="3" placeholder="特殊的安装要求或注意事项，如：需安装在离地1.5米高度，避免阳光直射"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">场景图片（可选）</label>
+            <div style="border: 2px dashed #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; background: #f8f9fa; cursor: pointer;" 
+                 onclick="document.getElementById('scene-image-upload').click()"
+                 ondrop="handleSceneImageDrop(event)" 
+                 ondragover="event.preventDefault()">
+                <div style="font-size: 48px; color: #bdc3c7;">🖼️</div>
+                <div style="margin-top: 10px; color: #666;">点击选择或拖放图片文件</div>
+                <div style="font-size: 0.9rem; color: #95a5a6; margin-top: 5px;">支持 JPG、PNG 格式，最大 5MB</div>
+                <div id="scene-image-preview" style="margin-top: 15px;"></div>
+            </div>
+            <input type="file" id="scene-image-upload" accept="image/*" style="display: none;" onchange="handleSceneImageSelect(event)">
+            <input type="hidden" id="scene-image-url">
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn" onclick="createScene()">创建场景</button>
+            <button class="btn btn-secondary" onclick="resetSceneForm()">重置表单</button>
+        </div>
+        
+        <div id="scene-message" style="margin-top: 15px;"></div>
+    </div>
+    
+    <!-- 场景列表 -->
+    <div id="scene-list" class="page">
+        <h2>场景列表</h2>
+        <div id="scenes-container">
+            <div class="loading">加载场景列表...</div>
+        </div>
+    </div>
+    
+    <!-- 删除确认对话框 -->
+    <div id="delete-modal" class="delete-modal">
+        <div class="delete-content">
+            <div class="delete-icon">🗑️</div>
+            <h3 style="color: #333; margin-bottom: 10px;">确认删除标志</h3>
+            <p style="color: #666; margin-bottom: 15px;">您确定要删除标志 <strong id="delete-sign-code"></strong> - <strong id="delete-sign-name"></strong> 吗？</p>
+            <div class="warning-message">
+                <strong>⚠️ 警告：</strong>此操作不可撤销！删除后标志将从系统中永久移除。
+            </div>
+            <div class="delete-buttons">
+                <button class="btn btn-secondary" onclick="cancelDelete()">取消</button>
+                <button class="btn btn-danger" onclick="deleteSign()">确认删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 删除场景确认对话框 -->
+    <div id="delete-scene-modal" class="delete-modal">
+        <div class="delete-content">
+            <div class="delete-icon">🗑️</div>
+            <h3 style="color: #333; margin-bottom: 10px;">确认删除场景</h3>
+            <p style="color: #666; margin-bottom: 15px;">您确定要删除场景 <strong id="delete-scene-code"></strong> - <strong id="delete-scene-name"></strong> 吗？</p>
+            <div class="warning-message">
+                <strong>⚠️ 警告：</strong>此操作不可撤销！删除后场景及其所有标志组合将从系统中永久移除。
+            </div>
+            <div class="delete-buttons">
+                <button class="btn btn-secondary" onclick="cancelDeleteScene()">取消</button>
+                <button class="btn btn-danger" onclick="deleteScene()">确认删除</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑场景模态框 -->
+    <div id="edit-scene-modal" class="edit-modal">
+        <div class="edit-content">
+            <h3 style="color: #333; margin-bottom: 20px;">编辑场景</h3>
+            
+            <div class="form-group">
+                <label class="form-label">场景编码</label>
+                <input type="text" id="edit-scene-code" class="form-control" readonly style="background: #f8f9fa;">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">场景名称 *</label>
+                <input type="text" id="edit-scene-name" class="form-control" placeholder="例如: 油漆车间入口">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">所属部门 *</label>
+                <select id="edit-scene-dept" class="form-control">
+                    <option value="">请选择部门</option>
+                    <option value="维修">维修</option>
+                    <option value="生产">生产</option>
+                    <option value="工艺">工艺</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">危险源标签</label>
+                <div style="margin-bottom: 10px; font-size: 0.9rem; color: #666;">选择适用的危险源标签（可多选）：</div>
+                <div id="edit-hazard-tags-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                    <!-- 危险源标签将通过JavaScript动态生成 -->
+                </div>
+                
+                <!-- 自定义危险源标签 -->
+                <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <div style="font-weight: bold; margin-bottom: 10px; color: #333;">自定义危险源标签</div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="edit-custom-hazard-input" class="form-control" placeholder="输入新的危险源标签，如：生物危害、静电危险" style="flex: 1;">
+                        <button type="button" onclick="addEditCustomHazard()" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">添加</button>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #666;">
+                        提示：自定义标签将保存到系统中，后续可直接选择使用
+                    </div>
+                    
+                    <!-- 自定义标签显示区域 -->
+                    <div id="edit-custom-hazards-container" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px;">
+                        <!-- 自定义标签将动态显示在这里 -->
+                    </div>
+                </div>
+                
+                <input type="hidden" id="edit-scene-hazards">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">位置描述（可选）</label>
+                <input type="text" id="edit-scene-location" class="form-control" placeholder="例如：车间东侧入口、二楼走廊尽头">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">安装注意事项</label>
+                <textarea id="edit-scene-notes" class="form-control" rows="3" placeholder="特殊的安装要求或注意事项"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">场景图片（可选）</label>
+                <div style="border: 2px dashed #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; background: #f8f9fa; cursor: pointer;" 
+                     onclick="document.getElementById('edit-scene-image-upload').click()"
+                     ondrop="handleEditSceneImageDrop(event)" 
+                     ondragover="event.preventDefault()">
+                    <div style="font-size: 48px; color: #bdc3c7;">🖼️</div>
+                    <div style="margin-top: 10px; color: #666;">点击选择或拖放图片文件</div>
+                    <div style="font-size: 0.9rem; color: #95a5a6; margin-top: 5px;">支持 JPG、PNG 格式，最大 5MB</div>
+                    <div id="edit-scene-image-preview" style="margin-top: 15px;"></div>
+                </div>
+                <input type="file" id="edit-scene-image-upload" accept="image/*" style="display: none;" onchange="handleEditSceneImageSelect(event)">
+                <input type="hidden" id="edit-scene-image-url">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn" onclick="updateScene()">保存修改</button>
+                <button class="btn btn-secondary" onclick="cancelEditScene()">取消</button>
+            </div>
+            
+            <div id="edit-scene-message" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+    
+    <!-- 添加标志到场景模态框（改进版） -->
+    <div id="add-signs-modal" class="add-signs-modal">
+        <div class="add-signs-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h3 style="color: #333; margin: 0;">为场景添加安全标志</h3>
+                    <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">
+                        <span id="add-signs-scene-name"></span> 
+                        <span style="margin: 0 5px;">•</span>
+                        <span id="add-signs-scene-code"></span>
+                    </div>
+                </div>
+                <button class="btn-close" onclick="cancelAddSigns()" style="background: none; border: none; font-size: 1.5rem; color: #666; cursor: pointer;">×</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 500px;">
+                <!-- 左侧：标志库 -->
+                <div class="sign-library-section" style="border-right: 1px solid #e9ecef; padding-right: 20px;">
+                    <h4 style="color: #333; margin-bottom: 15px;">标志库</h4>
+                    
+                    <!-- 标志类型筛选 -->
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="sign-type-filter active" data-type="all" onclick="filterSignsByType('all')">全部</button>
+                            <button class="sign-type-filter" data-type="warning" onclick="filterSignsByType('warning')">🟡 警告</button>
+                            <button class="sign-type-filter" data-type="prohibition" onclick="filterSignsByType('prohibition')">🔴 禁止</button>
+                            <button class="sign-type-filter" data-type="instruction" onclick="filterSignsByType('instruction')">🔵 指令</button>
+                            <button class="sign-type-filter" data-type="notification" onclick="filterSignsByType('notification')">🟢 提示</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 标志列表 -->
+                    <div id="sign-selector-container" style="height: 380px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; background: #f8f9fa;">
+                        <div class="loading">加载标志列表...</div>
+                    </div>
+                </div>
+                
+                <!-- 右侧：预览与配置 -->
+                <div class="preview-section">
+                    <h4 style="color: #333; margin-bottom: 15px;">标志组合预览</h4>
+                    
+                    <!-- 预览画布 -->
+                    <div id="sign-preview-container" style="height: 200px; border: 2px dashed #dee2e6; border-radius: 8px; padding: 15px; background: #f8f9fa; margin-bottom: 20px; overflow-y: auto;">
+                        <div style="text-align: center; color: #6c757d; padding: 60px 0;">
+                            <div style="font-size: 1.2rem; margin-bottom: 10px;">🖼️</div>
+                            <div>暂无标志</div>
+                            <div style="font-size: 0.9rem; margin-top: 5px;">从左侧标志库添加标志</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 安装信息表单 -->
+                    <div id="installation-info-section" style="display: none;">
+                        <h4 style="color: #333; margin-bottom: 15px;">安装配置</h4>
+                        <div class="form-group">
+                            <label class="form-label">安装高度 (米)</label>
+                            <input type="number" id="installation-height" class="form-control" placeholder="例如: 1.5" step="0.1" min="0.5" max="5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">观察距离 (米)</label>
+                            <input type="number" id="observation-distance" class="form-control" placeholder="例如: 10" step="0.5" min="1" max="50">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">特殊要求</label>
+                            <textarea id="special-requirements" class="form-control" rows="2" placeholder="特殊的安装要求或注意事项"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button class="btn" onclick="addSelectedSignsToScene()" style="flex: 1;">添加到场景</button>
+                        <button class="btn btn-secondary" onclick="cancelAddSigns()">取消</button>
+                    </div>
+                    
+                    <div id="add-signs-message" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PDF生成库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script src="app-improved.js"></script>
+</body>
+</html>
