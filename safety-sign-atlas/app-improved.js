@@ -1,6 +1,6 @@
 // 安全标志图集管理系统 - 改进版（优化添加标志流程）
 const API_BASE = '/api';
-let selectedImageFile = null;
+let selectedImageFiles = [];
 let currentStep = 1; // 1:上传图片, 2:选择类型, 3:输入信息, 4:确认
 
 // 新布局测试按钮样式和卡片式展示增强
@@ -143,11 +143,22 @@ enhancedStyles.textContent = `
 document.head.appendChild(enhancedStyles);
 
 // 页面切换
-function showPage(pageId) {
+function showPage(pageId, btnElement) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
-    event.target.classList.add('active');
+    if (btnElement) {
+        btnElement.classList.add('active');
+    } else {
+        // 查找对应的导航按钮并激活
+        const navBtns = document.querySelectorAll('.nav button');
+        for (let btn of navBtns) {
+            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(pageId)) {
+                btn.classList.add('active');
+                break;
+            }
+        }
+    }
     
     switch(pageId) {
         case 'sign-library': loadSigns(); break;
@@ -164,17 +175,34 @@ async function loadSigns() {
         const res = await fetch(`${API_BASE}/signs`);
         const signs = await res.json();
         
-        if (signs.length === 0) {
-            container.innerHTML = '<div class="message">暂无标志数据</div>';
+        // 缓存所有标志数据供搜索使用
+        allSignsCache = signs;
+        
+        // 获取搜索关键字
+        const searchInput = document.getElementById('sign-search-input');
+        const keyword = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        
+        // 如果有搜索关键字，过滤数据
+        let filteredSigns = signs;
+        if (keyword) {
+            filteredSigns = signs.filter(s => 
+                (s.sign_name && s.sign_name.toLowerCase().includes(keyword)) ||
+                (s.sign_code && s.sign_code.toLowerCase().includes(keyword)) ||
+                (s.description && s.description.toLowerCase().includes(keyword))
+            );
+        }
+        
+        if (filteredSigns.length === 0) {
+            container.innerHTML = keyword ? '<div class="message">未找到匹配的标志</div>' : '<div class="message">暂无标志数据</div>';
             return;
         }
         
         // 按类型分组
         const byType = {
-            warning: signs.filter(s => s.sign_type === 'warning'),
-            prohibition: signs.filter(s => s.sign_type === 'prohibition'),
-            instruction: signs.filter(s => s.sign_type === 'instruction'),
-            information: signs.filter(s => s.sign_type === 'information')
+            warning: filteredSigns.filter(s => s.sign_type === 'warning'),
+            prohibition: filteredSigns.filter(s => s.sign_type === 'prohibition'),
+            instruction: filteredSigns.filter(s => s.sign_type === 'instruction'),
+            information: filteredSigns.filter(s => s.sign_type === 'information')
         };
         
         let html = '';
@@ -227,6 +255,9 @@ async function loadSigns() {
     }
 }
 
+// 全局变量存储所有标志数据（供搜索使用）
+let allSignsCache = [];
+
 // 创建标志卡片
 function createSignCard(sign) {
     const typeClass = sign.sign_type;
@@ -237,9 +268,9 @@ function createSignCard(sign) {
         'information': '提示标志'
     }[sign.sign_type] || '未知';
     
-    // 如果有图片，显示图片；否则显示占位符
+    // 如果有图片，显示图片（点击下载）；否则显示占位符
     const imageHtml = sign.image_url 
-        ? `<img src="${sign.image_url}" class="sign-image" alt="${sign.sign_name}">`
+        ? `<img src="${sign.image_url}" class="sign-image" alt="${sign.sign_name}" style="cursor: pointer;" onclick="downloadSignImage('${sign.image_url}', '${sign.sign_name}')" title="点击下载原图">`
         : `<div class="sign-image" style="display: flex; align-items: center; justify-content: center; color: #999; font-size: 0.9rem;">暂无图片</div>`;
     
     return `
@@ -258,6 +289,7 @@ function createSignCard(sign) {
             <div style="font-size: 0.9rem; color: #666; margin-top: 10px;">
                 <div>尺寸: ${sign.standard_size}</div>
                 <div>材质: ${sign.material}</div>
+                ${sign.is_ppe == 1 || sign.is_ppe === '1' || sign.is_ppe === true ? '<div style="color: #339af0; font-weight: bold;">🛡️ PPE防护装备</div>' : ''}
                 ${sign.description ? `<div>描述: ${sign.description}</div>` : ''}
                 <div style="font-size: 0.8rem; color: #999; margin-top: 5px;">ID: ${sign.id} • 创建: ${formatDateShort(sign.created_at)}</div>
             </div>
@@ -283,10 +315,11 @@ function hideAddSignForm() {
 // 重置添加标志表单
 function resetAddSignForm() {
     currentStep = 1;
-    selectedImageFile = null;
+    selectedImageFiles = [];
     document.getElementById('image-upload').value = '';
     document.getElementById('image-preview-container').style.display = 'none';
-    document.getElementById('image-preview').src = '';
+    document.getElementById('thumbnail-list').innerHTML = '';
+    document.getElementById('selected-count').textContent = '0';
     document.getElementById('sign-type').value = 'warning';
     document.getElementById('sign-name').value = '';
     document.getElementById('standard-size').value = '300x300mm';
@@ -313,7 +346,8 @@ function selectType(type) {
     document.querySelectorAll('.type-option').forEach(option => {
         option.classList.remove('selected');
     });
-    event.target.closest('.type-option').classList.add('selected');
+    // 注意：这里不能直接用event.target，因为可能通过代码调用
+    document.querySelector(`.type-option.type-${type}`).classList.add('selected');
     
     // 更新表单值
     document.getElementById('sign-type').value = type;
@@ -351,7 +385,7 @@ function showStep(stepNumber) {
     document.getElementById(`step-${stepNumber}-content`).style.display = 'block';
     
     // 在后续步骤中显示图片缩略图
-    if (stepNumber >= 2 && selectedImageFile) {
+    if (stepNumber >= 2 && selectedImageFiles.length > 0) {
         showImageThumbnailInStep(stepNumber);
     }
     
@@ -366,8 +400,17 @@ function showStep(stepNumber) {
 
 // 在步骤中显示图片缩略图
 function showImageThumbnailInStep(stepNumber) {
-    const imagePreview = document.getElementById('image-preview');
-    if (!imagePreview.src) return;
+    if (selectedImageFiles.length === 0) return;
+    
+    // 生成所有缩略图的HTML
+    const thumbnailsHtml = selectedImageFiles.map((file, index) => {
+        return `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                <img src="${file.dataUrl}" style="width: 60px; height: 60px; object-fit: contain; border-radius: 5px; border: 2px solid #667eea;">
+                <div style="font-size: 0.75rem; color: #666; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${file.name}">${file.name}</div>
+            </div>
+        `;
+    }).join('');
     
     // 步骤2：在选择类型页面显示缩略图
     if (stepNumber === 2) {
@@ -384,7 +427,6 @@ function showImageThumbnailInStep(stepNumber) {
                 text-align: center;
             `;
             const step2Content = document.getElementById('step-2-content');
-            // 插入到第一个元素之前
             if (step2Content.firstChild) {
                 step2Content.insertBefore(thumbnailContainer, step2Content.firstChild);
             } else {
@@ -393,17 +435,12 @@ function showImageThumbnailInStep(stepNumber) {
         }
         
         thumbnailContainer.innerHTML = `
-            <div style="font-weight: bold; color: #555; margin-bottom: 10px;">📷 已上传的标志图片：</div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-                <img src="${imagePreview.src}" style="max-width: 120px; max-height: 120px; border-radius: 5px; border: 2px solid #667eea;">
-                <div style="text-align: left;">
-                    <div style="font-size: 0.9rem; color: #666;">文件: ${selectedImageFile.name}</div>
-                    <div style="font-size: 0.9rem; color: #666;">大小: ${formatFileSize(selectedImageFile.size)}</div>
-                    <button type="button" class="btn btn-secondary" onclick="removeImageAndGoBack()" style="padding: 5px 10px; font-size: 0.9rem; margin-top: 5px;">更换图片</button>
-                </div>
+            <div style="font-weight: bold; color: #555; margin-bottom: 10px;">📷 已上传的标志图片（${selectedImageFiles.length} 张）：</div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 15px;">
+                ${thumbnailsHtml}
             </div>
             <div style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                请根据图片内容选择标志类型
+                请根据图片内容选择标志类型（所有图片统一设置）
             </div>
         `;
     }
@@ -423,7 +460,6 @@ function showImageThumbnailInStep(stepNumber) {
                 text-align: center;
             `;
             const step3Content = document.getElementById('step-3-content');
-            // 插入到第一个form-group之后
             const firstFormGroup = step3Content.querySelector('.form-group');
             if (firstFormGroup && firstFormGroup.nextSibling) {
                 step3Content.insertBefore(thumbnailContainer, firstFormGroup.nextSibling);
@@ -433,17 +469,12 @@ function showImageThumbnailInStep(stepNumber) {
         }
         
         thumbnailContainer.innerHTML = `
-            <div style="font-weight: bold; color: #555; margin-bottom: 10px;">📷 已上传的标志图片：</div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-                <img src="${imagePreview.src}" style="max-width: 100px; max-height: 100px; border-radius: 5px; border: 2px solid #667eea;">
-                <div style="text-align: left;">
-                    <div style="font-size: 0.9rem; color: #666;">文件: ${selectedImageFile.name}</div>
-                    <div style="font-size: 0.9rem; color: #666;">大小: ${formatFileSize(selectedImageFile.size)}</div>
-                    <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">类型: ${getTypeText(document.getElementById('sign-type').value)}</div>
-                </div>
+            <div style="font-weight: bold; color: #555; margin-bottom: 10px;">📷 已上传的标志图片（${selectedImageFiles.length} 张）：</div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 15px;">
+                ${thumbnailsHtml}
             </div>
             <div style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                请根据图片内容填写标志名称和其他信息
+                类型: ${getTypeText(document.getElementById('sign-type').value)} — 名称将自动从文件名提取
             </div>
         `;
     }
@@ -477,19 +508,18 @@ function removeImageAndGoBack() {
 
 // 更新确认信息
 function updateConfirmationInfo() {
-    const imagePreview = document.getElementById('image-preview');
-    document.getElementById('confirm-image').src = imagePreview.src;
-    document.getElementById('confirm-code').textContent = document.getElementById('sign-code').value;
-    document.getElementById('confirm-name').textContent = document.getElementById('sign-name').value;
-    
     const typeText = {
         'warning': '警告标志 (黄色)',
         'prohibition': '禁止标志 (红色)',
         'instruction': '指令标志 (蓝色)',
         'information': '提示标志 (绿色)'
     }[document.getElementById('sign-type').value] || '未知';
-    document.getElementById('confirm-type').textContent = typeText;
     
+    // 显示批量信息
+    document.getElementById('confirm-image').src = selectedImageFiles.length > 0 ? selectedImageFiles[0].dataUrl : '';
+    document.getElementById('confirm-code').textContent = document.getElementById('sign-code').value;
+    document.getElementById('confirm-name').textContent = `${selectedImageFiles.length} 张图片的统一信息`;
+    document.getElementById('confirm-type').textContent = typeText;
     document.getElementById('confirm-size').textContent = document.getElementById('standard-size').value;
     document.getElementById('confirm-material').textContent = document.getElementById('material').value;
     
@@ -497,21 +527,59 @@ function updateConfirmationInfo() {
     const isPpeElement = document.querySelector('input[name="is_ppe"]:checked');
     const is_ppe = isPpeElement ? parseInt(isPpeElement.value) : 0;
     document.getElementById('confirm-ppe').textContent = is_ppe ? '是 (个人防护装备)' : '否 (普通安全标志)';
-    
     document.getElementById('confirm-description').textContent = document.getElementById('description').value || '无';
     
-    // 在确认页面也显示文件信息
-    if (selectedImageFile) {
-        const fileInfoDiv = document.getElementById('confirm-file-info');
-        if (!fileInfoDiv) {
-            const confirmContainer = document.querySelector('#step-4-content .form-group > div');
-            const fileInfo = document.createElement('div');
-            fileInfo.id = 'confirm-file-info';
-            fileInfo.style.cssText = 'font-size: 0.9rem; color: #666; margin-top: 10px;';
-            fileInfo.innerHTML = `<strong>文件信息:</strong> ${selectedImageFile.name} (${formatFileSize(selectedImageFile.size)})`;
-            confirmContainer.appendChild(fileInfo);
+    // 在确认页面显示文件列表
+    const confirmContainer = document.querySelector('#step-4-content .form-group > div');
+    let fileListDiv = document.getElementById('confirm-file-list');
+    if (!fileListDiv) {
+        fileListDiv = document.createElement('div');
+        fileListDiv.id = 'confirm-file-list';
+        fileListDiv.style.cssText = 'margin-top: 5px; font-size: 0.85rem;';
+        // 插入到描述后面
+        const descSpan = document.getElementById('confirm-description');
+        if (descSpan && descSpan.parentElement) {
+            descSpan.parentElement.parentElement.appendChild(fileListDiv);
         }
     }
+    
+    fileListDiv.innerHTML = `
+        <div style="background: #e8f5e9; padding: 10px; border-radius: 6px; margin-top: 10px;">
+            <strong>待添加的文件列表（共 ${selectedImageFiles.length} 张）：</strong>
+            <ul style="margin: 5px 0 0 0; padding-left: 20px;">
+                ${selectedImageFiles.map(f => `<li>${f.name} (${formatFileSize(f.size)})</li>`).join('')}
+            </ul>
+            <div style="margin-top: 8px; color: #2e7d32; font-weight: bold;">
+                ⚡ 将批量添加 ${selectedImageFiles.length} 个安全标志，类型统一为 ${typeText}
+            </div>
+        </div>
+    `;
+    
+    // 更新确认图片显示为缩略图网格
+    const confirmImageEl = document.getElementById('confirm-image');
+    if (selectedImageFiles.length > 1) {
+        confirmImageEl.style.display = 'none';
+        // 在确认图片旁边添加缩略图网格
+        let gridDiv = document.getElementById('confirm-thumbnail-grid');
+        if (!gridDiv) {
+            gridDiv = document.createElement('div');
+            gridDiv.id = 'confirm-thumbnail-grid';
+            gridDiv.style.cssText = 'display: flex; flex-wrap: wrap; gap: 5px;';
+            confirmImageEl.parentElement.insertBefore(gridDiv, confirmImageEl.nextSibling);
+        }
+        gridDiv.innerHTML = selectedImageFiles.map(f => 
+            `<img src="${f.dataUrl}" style="width: 50px; height: 50px; object-fit: contain; border-radius: 4px; border: 1px solid #ddd;">`
+        ).join('');
+    } else if (selectedImageFiles.length === 1) {
+        confirmImageEl.style.display = 'block';
+        const gridDiv = document.getElementById('confirm-thumbnail-grid');
+        if (gridDiv) gridDiv.remove();
+        confirmImageEl.src = selectedImageFiles[0].dataUrl;
+    }
+    
+    // 清除旧的文件信息div（如果有）
+    const oldFileInfo = document.getElementById('confirm-file-info');
+    if (oldFileInfo) oldFileInfo.remove();
 }
 
 // 更新步骤按钮
@@ -550,8 +618,8 @@ function prevStep() {
 function validateCurrentStep() {
     switch(currentStep) {
         case 1: // 上传图片
-            if (!selectedImageFile) {
-                showMessage('请先上传标志图片', 'error');
+            if (selectedImageFiles.length === 0) {
+                showMessage('请先上传至少一张标志图片', 'error');
                 return false;
             }
             break;
@@ -563,11 +631,8 @@ function validateCurrentStep() {
             }
             break;
         case 3: // 输入信息
-            const signName = document.getElementById('sign-name').value.trim();
-            if (!signName) {
-                showMessage('请输入标志名称', 'error');
-                return false;
-            }
+            // 批量模式下名称自动生成，不强制要求填写
+            // 如果用户已经输入了名称，也可以使用
             break;
     }
     return true;
@@ -601,43 +666,104 @@ function generateSignCode() {
 
 // 预览图片
 function previewImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
     
-    // 验证文件类型
-    if (!file.type.match('image.*')) {
-        showMessage('请选择图片文件（JPG、PNG等）', 'error');
-        return;
-    }
-    
-    // 验证文件大小（限制为5MB）
-    if (file.size > 5 * 1024 * 1024) {
-        showMessage('图片大小不能超过5MB', 'error');
-        return;
-    }
-    
-    selectedImageFile = file;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const preview = document.getElementById('image-preview');
-        preview.src = e.target.result;
-        document.getElementById('image-preview-container').style.display = 'block';
+    // 验证每个文件
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.match('image.*')) {
+            showMessage(`文件 "${file.name}" 不是图片格式，已跳过`, 'error');
+            continue;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showMessage(`文件 "${file.name}" 超过5MB限制，已跳过`, 'error');
+            continue;
+        }
         
-        // 自动进入下一步
-        setTimeout(() => {
-            nextStep();
-        }, 500);
-    };
-    reader.readAsDataURL(file);
+        // 检查是否已存在同名文件
+        if (selectedImageFiles.some(f => f.name === file.name)) {
+            showMessage(`文件 "${file.name}" 已存在，已跳过`, 'error');
+            continue;
+        }
+        
+        // 读取文件并存储
+        const reader = new FileReader();
+        reader.fileRef = file;
+        reader.onload = function(e) {
+            selectedImageFiles.push({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                dataUrl: e.target.result,
+                file: file
+            });
+            
+            // 更新缩略图列表
+            renderThumbnailList();
+            
+            // 更新计数
+            document.getElementById('selected-count').textContent = selectedImageFiles.length;
+            document.getElementById('image-preview-container').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // 清空input，允许重复选择同一文件
+    event.target.value = '';
 }
 
-// 移除图片
-function removeImage() {
-    selectedImageFile = null;
-    document.getElementById('image-upload').value = '';
-    document.getElementById('image-preview-container').style.display = 'none';
-    document.getElementById('image-preview').src = '';
+// 渲染缩略图列表
+function renderThumbnailList() {
+    const container = document.getElementById('thumbnail-list');
+    if (selectedImageFiles.length === 0) {
+        document.getElementById('image-preview-container').style.display = 'none';
+        return;
+    }
+    
+    container.innerHTML = selectedImageFiles.map((file, index) => `
+        <div class="thumbnail-item" data-index="${index}" style="
+            position: relative;
+            width: 120px;
+            padding: 8px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+        ">
+            <img src="${file.dataUrl}" style="width: 100px; height: 80px; object-fit: contain; border-radius: 4px;">
+            <div style="font-size: 0.75rem; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${file.name}">${file.name}</div>
+            <div style="font-size: 0.7rem; color: #999;">${formatFileSize(file.size)}</div>
+            <button type="button" onclick="removeImageAtIndex(${index})" style="
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 22px;
+                height: 22px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                line-height: 1;
+            " title="移除">×</button>
+        </div>
+    `).join('');
+}
+
+// 移除指定索引的图片
+function removeImageAtIndex(index) {
+    selectedImageFiles.splice(index, 1);
+    document.getElementById('selected-count').textContent = selectedImageFiles.length;
+    renderThumbnailList();
+    
+    if (selectedImageFiles.length === 0) {
+        document.getElementById('image-preview-container').style.display = 'none';
+    }
 }
 
 // 显示消息
@@ -653,9 +779,14 @@ function showMessage(message, type = 'info') {
     }
 }
 
-// 添加新标志
+// 添加新标志（支持批量上传）
 async function addNewSign() {
     if (!validateCurrentStep()) {
+        return;
+    }
+    
+    if (selectedImageFiles.length === 0) {
+        showMessage('没有可上传的图片', 'error');
         return;
     }
     
@@ -663,50 +794,89 @@ async function addNewSign() {
     const isPpeElement = document.querySelector('input[name="is_ppe"]:checked');
     const is_ppe = isPpeElement ? parseInt(isPpeElement.value) : 0;
     
-    const signData = {
-        sign_code: document.getElementById('sign-code').value,
-        sign_name: document.getElementById('sign-name').value.trim(),
-        sign_type: document.getElementById('sign-type').value,
-        color_scheme: getColorScheme(document.getElementById('sign-type').value),
-        standard_size: document.getElementById('standard-size').value.trim(),
-        material: document.getElementById('material').value.trim(),
-        description: document.getElementById('description').value.trim(),
-        is_ppe: is_ppe
-    };
+    const signType = document.getElementById('sign-type').value;
+    const colorScheme = getColorScheme(signType);
+    const standardSize = document.getElementById('standard-size').value.trim();
+    const material = document.getElementById('material').value.trim();
+    const description = document.getElementById('description').value.trim();
+    
+    // 获取用户输入的名称（如果有），否则使用文件名
+    const userProvidedName = document.getElementById('sign-name').value.trim();
+    
+    // 显示进度
+    const total = selectedImageFiles.length;
+    const messageContainer = document.getElementById('add-sign-message');
+    messageContainer.innerHTML = `<div class="message info">正在批量添加安全标志... 0/${total}</div>`;
+    
+    let successCount = 0;
+    let failCount = 0;
+    let firstSignCode = '';
     
     try {
-        // 使用FormData上传
-        const formData = new FormData();
-        formData.append('sign_code', signData.sign_code);
-        formData.append('sign_name', signData.sign_name);
-        formData.append('sign_type', signData.sign_type);
-        formData.append('color_scheme', signData.color_scheme);
-        formData.append('standard_size', signData.standard_size);
-        formData.append('material', signData.material);
-        formData.append('description', signData.description);
-        formData.append('is_ppe', signData.is_ppe.toString());
-        formData.append('image', selectedImageFile);
+        for (let i = 0; i < total; i++) {
+            const fileData = selectedImageFiles[i];
+            
+            // 从文件名提取标志名称
+            const fileName = fileData.name;
+            const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+            const signName = (i === 0 && userProvidedName) ? userProvidedName : nameWithoutExt;
+            
+            // 生成唯一标志代码
+            const typePrefix = {
+                'warning': 'W',
+                'prohibition': 'P',
+                'instruction': 'I',
+                'information': 'N'
+            }[signType] || 'X';
+            const timestamp = Date.now().toString(36).toUpperCase();
+            const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+            const signCode = `${typePrefix}${timestamp}-${randomStr}`;
+            
+            // 构建FormData
+            const formData = new FormData();
+            formData.append('sign_code', signCode);
+            formData.append('sign_name', signName);
+            formData.append('sign_type', signType);
+            formData.append('color_scheme', colorScheme);
+            formData.append('standard_size', standardSize);
+            formData.append('material', material);
+            formData.append('description', description || signName);
+            formData.append('is_ppe', is_ppe.toString());
+            formData.append('image', fileData.file);
+            
+            const response = await fetch(`${API_BASE}/signs/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                successCount++;
+                if (i === 0) firstSignCode = signCode;
+            } else {
+                failCount++;
+                console.error(`上传第 ${i+1} 张失败:`, fileData.name);
+            }
+            
+            // 更新进度
+            messageContainer.innerHTML = `<div class="message ${failCount > 0 ? 'warning' : 'info'}">正在批量添加安全标志... ${i + 1}/${total}（成功: ${successCount}，失败: ${failCount}）</div>`;
+        }
         
-        const response = await fetch(`${API_BASE}/signs/upload`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            showMessage('标志添加成功！', 'success');
+        if (successCount > 0) {
+            if (failCount === 0) {
+                showMessage(`批量添加成功！共添加 ${successCount} 个安全标志`, 'success');
+            } else {
+                showMessage(`添加完成：${successCount} 个成功，${failCount} 个失败`, 'warning');
+            }
             setTimeout(() => {
                 hideAddSignForm();
                 loadSigns();
             }, 1500);
         } else {
-            const error = await response.text();
-            console.error('上传失败:', error);
-            showMessage('添加失败: ' + (error || '未知错误'), 'error');
+            showMessage('全部添加失败，请重试', 'error');
         }
     } catch (error) {
-        console.error('上传异常:', error);
-        showMessage('添加失败: ' + error.message, 'error');
+        console.error('批量上传异常:', error);
+        showMessage('批量添加失败: ' + error.message, 'error');
     }
 }
 
@@ -779,8 +949,7 @@ async function loadScenes() {
                             </div>
                         </div>
                         <div class="scene-actions">
-                            <button class="action-btn btn-view" onclick="viewNewLayout(${scene.id})" title="查看详情（新布局）">👁️ 查看</button>
-                            <button class="action-btn btn-new-layout" onclick="viewNewLayout(${scene.id})" title="新布局详情">🎨 新布局</button>
+                            <button class="action-btn btn-view" onclick="viewNewLayout(${scene.id})" title="查看场景详情">👁️ 查看详情</button>
                             <button class="action-btn btn-edit" onclick="editScene(${scene.id})" title="编辑场景">✏️ 编辑</button>
                             <button class="action-btn btn-add-sign" onclick="addSignsToScene(${scene.id})" title="添加标志">➕ 标志</button>
                             <button class="action-btn btn-delete-scene" onclick="confirmDeleteScene(${scene.id}, '${scene.scene_code}', '${scene.scene_name.replace(/'/g, "\\'")}')" title="删除场景">🗑️ 删除</button>
@@ -1114,6 +1283,7 @@ function createHazardTagElement(container, id, name, color) {
     };
     
     container.appendChild(tagElement);
+    return tagElement;
 }
 
 // 显示自定义危险源标签
@@ -1194,9 +1364,10 @@ async function addCustomHazard() {
     try {
         // 保存到数据库
         const savedTag = await saveCustomHazardTag(newTag);
+        const tagData = savedTag.data || savedTag;
         
         // 添加到本地列表
-        customHazardTags.push(savedTag);
+        customHazardTags.push(tagData);
         
         // 清空输入框
         input.value = '';
@@ -1320,9 +1491,10 @@ async function addEditCustomHazard() {
     try {
         // 保存到数据库
         const savedTag = await saveCustomHazardTag(newTag);
+        const tagData = savedTag.data || savedTag;
         
         // 添加到本地列表
-        customHazardTags.push(savedTag);
+        customHazardTags.push(tagData);
         
         // 清空输入框
         input.value = '';
@@ -1954,8 +2126,30 @@ async function exportSceneToPDF(sceneId) {
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
             
-            // 添加图片到PDF
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            // 计算需要多少页
+            const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+            let remainingHeight = imgHeight;
+            let srcY = 0;
+            let page = 0;
+            
+            while (remainingHeight > 0) {
+                if (page > 0) pdf.addPage();
+                
+                // 当前页截取canvas的一部分
+                const pageCanvas = document.createElement('canvas');
+                const px = pdfWidth * (canvas.width / pdfWidth);
+                pageCanvas.width = canvas.width;
+                pageCanvas.height = Math.min(canvas.height - srcY, pdfHeight * (canvas.width / pdfWidth));
+                const ctx = pageCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, srcY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+                
+                const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.9);
+                pdf.addImage(pageImgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                
+                srcY += pageCanvas.height;
+                remainingHeight -= pdfHeight;
+                page++;
+            }
             
             // 保存PDF
             const fileName = `安全标志张贴指导_${scene.scene_code}_${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -2091,13 +2285,12 @@ function createPDFContent(scene) {
                 
                 <h3 style="color: #1e40af; margin-bottom: 10px; font-size: 16px;">注意事项:</h3>
                 <ul style="margin: 0 0 0 20px; padding: 0; color: #666;">
-                    <li style="margin-bottom: 5px;">按照建议顺序进行张贴，确保标志的可见性和逻辑性</li>
-                    <li style="margin-bottom: 5px;">安装高度应符合人体工程学，便于观察</li>
-                    <li style="margin-bottom: 5px;">确保标志表面清洁，无遮挡物</li>
-                    <li style="margin-bottom: 5px;">定期检查标志的完整性和清晰度</li>
-                    <li style="margin-bottom: 5px;">标志应安装在光线充足的位置</li>
-                    <li style="margin-bottom: 5px;">危险区域标志应使用反光材料</li>
-                    <li style="margin-bottom: 5px;">标志内容应清晰易懂，符合国家标准</li>
+                    <li style="margin-bottom: 5px;"><strong>张贴顺序：</strong>按照警告→禁止→指令→信息的顺序进行张贴，确保标志的可见性和逻辑性</li>
+                    <li style="margin-bottom: 5px;"><strong>安装高度：</strong>安装高度应符合人体工程学，便于观察（一般1.2-1.8米）</li>
+                    <li style="margin-bottom: 5px;"><strong>标志清洁：</strong>确保标志表面清洁，无遮挡物，保持清晰可见</li>
+                    <li style="margin-bottom: 5px;"><strong>定期检查：</strong>定期检查标志的完整性和清晰度，及时更换损坏标志</li>
+                    <li style="margin-bottom: 5px;"><strong>危险区域：</strong>危险区域必须设置相应的安全标志，确保人员安全</li>
+                    <li style="margin-bottom: 5px;"><strong>防护装备：</strong>PPE（个人防护装备）标志应设置在更衣室、设备存放处等位置</li>
                 </ul>
             </div>
             
@@ -2632,7 +2825,7 @@ function cancelAddSigns() {
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', async function() {
-    loadSigns();
+    loadScenes();
     await initHazardTags();
     
     // 当切换到创建场景页面时，自动生成场景编码
@@ -2843,8 +3036,7 @@ function removeEditSceneImage() {
 function viewNewLayout(sceneId) {
     // 在新标签页中打开新布局页面
     const timestamp = new Date().getTime();
-    const ngrokUrl = 'https://nonlethally-unnourished-maxine.ngrok-free.dev';
-    window.open(`${ngrokUrl}/new-scene-detail-simple.html?id=${sceneId}&_t=${timestamp}`, '_blank');
+    window.open(`/new-scene-detail-simple.html?id=${sceneId}&_t=${timestamp}`, '_blank');
 }
 
 // 按类型排序标志
@@ -2858,4 +3050,21 @@ function sortSignsByType(signs) {
     return [...signs].sort((a, b) => {
         return (typeOrder[a.sign_type] || 99) - (typeOrder[b.sign_type] || 99);
     });
+}
+
+// 搜索标志（按名称/编码/描述）
+function filterSignsBySearch() {
+    loadSigns();
+}
+
+// 下载标志图片
+function downloadSignImage(imageUrl, signName) {
+    const a = document.createElement('a');
+    const fullUrl = imageUrl.startsWith('http') ? imageUrl : `${window.location.origin}${imageUrl}`;
+    a.href = fullUrl;
+    const ext = imageUrl.split('.').pop() || 'png';
+    a.download = `${signName || '安全标志'}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }

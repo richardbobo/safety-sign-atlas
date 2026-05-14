@@ -24,56 +24,58 @@ let db = new sqlite3.Database(DB_PATH, (err) => {
 
 // 初始化数据库表
 function initializeDatabase() {
-    // 场景表
-    db.run(`CREATE TABLE IF NOT EXISTS scenes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        scene_code TEXT NOT NULL UNIQUE,
-        scene_name TEXT NOT NULL,
-        department TEXT NOT NULL,
-        risk_level TEXT,
-        description TEXT,
-        material TEXT,
-        installation_method TEXT,
-        height_from_ground REAL DEFAULT 1.5,
-        viewing_distance INTEGER DEFAULT 3,
-        part_code TEXT,
-        unit_price REAL DEFAULT 0,
-        supplier TEXT,
-        lead_time INTEGER DEFAULT 3,
-        status TEXT DEFAULT 'active',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        created_by TEXT DEFAULT '波仔'
-    )`);
+    db.serialize(() => {
+        // 场景表
+        db.run(`CREATE TABLE IF NOT EXISTS scenes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scene_code TEXT NOT NULL UNIQUE,
+            scene_name TEXT NOT NULL,
+            department TEXT NOT NULL,
+            risk_level TEXT,
+            description TEXT,
+            material TEXT,
+            installation_method TEXT,
+            height_from_ground REAL DEFAULT 1.5,
+            viewing_distance INTEGER DEFAULT 3,
+            part_code TEXT,
+            unit_price REAL DEFAULT 0,
+            supplier TEXT,
+            lead_time INTEGER DEFAULT 3,
+            status TEXT DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT DEFAULT '系统'
+        )`);
 
-    // 安全标志表
-    db.run(`CREATE TABLE IF NOT EXISTS safety_signs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        scene_id INTEGER NOT NULL,
-        sign_type TEXT NOT NULL,
-        sign_name TEXT NOT NULL,
-        sign_size TEXT DEFAULT 'Φ200mm',
-        display_order INTEGER NOT NULL,
-        FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
-    )`);
+        // 安全标志表
+        db.run(`CREATE TABLE IF NOT EXISTS safety_signs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scene_id INTEGER NOT NULL,
+            sign_type TEXT NOT NULL,
+            sign_name TEXT NOT NULL,
+            sign_size TEXT DEFAULT '约200mm',
+            display_order INTEGER NOT NULL,
+            FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+        )`);
 
-    // 图片表
-    db.run(`CREATE TABLE IF NOT EXISTS images (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        scene_id INTEGER NOT NULL,
-        image_type TEXT NOT NULL, -- 'scene_photo', 'sign_photo', 'layout_diagram'
-        filename TEXT NOT NULL,
-        filepath TEXT NOT NULL,
-        description TEXT,
-        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
-    )`);
+        // 图片表
+        db.run(`CREATE TABLE IF NOT EXISTS images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scene_id INTEGER NOT NULL,
+            image_type TEXT NOT NULL, -- 'scene_photo', 'sign_photo', 'layout_diagram'
+            filename TEXT NOT NULL,
+            filepath TEXT NOT NULL,
+            description TEXT,
+            uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (scene_id) REFERENCES scenes (id) ON DELETE CASCADE
+        )`);
 
-    // 创建索引
-    db.run('CREATE INDEX IF NOT EXISTS idx_scenes_department ON scenes(department)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_scenes_status ON scenes(status)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_signs_scene_id ON safety_signs(scene_id)');
-    db.run('CREATE INDEX IF NOT EXISTS idx_images_scene_id ON images(scene_id)');
+        // 创建索引
+        db.run('CREATE INDEX IF NOT EXISTS idx_scenes_department ON scenes(department)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_scenes_status ON scenes(status)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_signs_scene_id ON safety_signs(scene_id)');
+        db.run('CREATE INDEX IF NOT EXISTS idx_images_scene_id ON images(scene_id)');
+    });
 
     console.log('数据库表初始化完成');
 }
@@ -98,7 +100,7 @@ const SceneModel = {
             db.run(sql, [
                 scene_code, scene_name, department, risk_level, description,
                 material, installation_method, height_from_ground, viewing_distance,
-                part_code, unit_price, supplier, lead_time, created_by || '波仔'
+                part_code, unit_price, supplier, lead_time, created_by || '系统'
             ], function(err) {
                 if (err) {
                     reject(err);
@@ -246,7 +248,7 @@ const SafetySignModel = {
             const sql = `INSERT INTO safety_signs (scene_id, sign_type, sign_name, sign_size, display_order)
                         VALUES (?, ?, ?, ?, ?)`;
 
-            db.run(sql, [sceneId, sign_type, sign_name, sign_size || 'Φ200mm', display_order], function(err) {
+            db.run(sql, [sceneId, sign_type, sign_name, sign_size || '约200mm', display_order], function(err) {
                 if (err) {
                     reject(err);
                 } else {

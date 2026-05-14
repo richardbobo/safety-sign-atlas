@@ -208,7 +208,7 @@
 </head>
 <body>
     <div class="container">
-        <a href="https://nonlethally-unnourished-maxine.ngrok-free.dev" class="back-link">← 返回主页面</a>
+        <a href="/index.html" class="back-link">← 返回主页面</a>
         
         <div id="sceneDetailContainer">
             <div class="loading">正在加载场景详情...</div>
@@ -253,6 +253,24 @@
             });
         }
         
+        // 自定义标签缓存
+        let customTagMap = {};
+
+        // 加载自定义标签列表
+        async function loadCustomTags() {
+            try {
+                const res = await fetch('/api/custom-hazard-tags');
+                if (res.ok) {
+                    const tags = await res.json();
+                    tags.forEach(tag => {
+                        customTagMap[tag.tag_id] = tag.tag_name;
+                    });
+                }
+            } catch (e) {
+                console.error('加载自定义标签失败:', e);
+            }
+        }
+
         // 获取危险源标签中文
         function getHazardTagsChinese(tags) {
             if (!tags) return [];
@@ -280,11 +298,9 @@
                     return tagMap[tagId];
                 }
                 
-                // 如果是自定义标签（以custom_开头），从数据库API获取
+                // 如果是自定义标签，从缓存中查找
                 if (tagId.startsWith('custom_')) {
-                    // 这里需要从数据库API获取，但由于是静态页面，我们暂时返回ID
-                    // 在实际应用中，应该从服务器获取自定义标签列表
-                    return tagId;
+                    return customTagMap[tagId] || tagId;
                 }
                 
                 // 如果都不是，返回原始ID
@@ -375,7 +391,7 @@
             html += '<div class="ppe-section">';
             html += '<div class="section-title">PPE安全标志（防护装备）</div>';
             if (scene.signs) {
-                const ppeSigns = scene.signs.filter(s => s.is_ppe === 1);
+                const ppeSigns = scene.signs.filter(s => s.is_ppe == 1 || s.is_ppe === '1' || s.is_ppe === true);
                 if (ppeSigns.length > 0) {
                     html += '<div class="ppe-grid">';
                     ppeSigns.forEach(sign => {
@@ -655,7 +671,7 @@
             // 获取基本信息
             const sortedSigns = sortSignsByType(scene.signs);
             const hazardTags = getHazardTagsChinese(scene.hazard_tags);
-            const ppeSigns = scene.signs ? scene.signs.filter(s => s.is_ppe === 1) : [];
+            const ppeSigns = scene.signs ? scene.signs.filter(s => s.is_ppe == 1 || s.is_ppe === '1' || s.is_ppe === true) : [];
             
             // 计算标志类型分布
             let typeDistribution = '';
@@ -812,7 +828,10 @@
         }
         
         // 页面加载
-        document.addEventListener('DOMContentLoaded', loadSceneDetail);
+        document.addEventListener('DOMContentLoaded', async () => {
+    await loadCustomTags();
+    loadSceneDetail();
+});
     </script>
 </body>
 </html>

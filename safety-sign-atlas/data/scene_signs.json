@@ -1,0 +1,74 @@
+[
+  {
+    "id": 1,
+    "scene_id": 1,
+    "sign_id": 5,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T03:16:02.652Z"
+  },
+  {
+    "id": 2,
+    "scene_id": 1,
+    "sign_id": 5,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T03:21:10.767Z"
+  },
+  {
+    "id": 3,
+    "scene_id": 1,
+    "sign_id": 5,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T04:19:10.139Z"
+  },
+  {
+    "id": 4,
+    "scene_id": 1,
+    "sign_id": 7,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T05:06:54.579Z"
+  },
+  {
+    "id": 5,
+    "scene_id": 1,
+    "sign_id": 71,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T05:06:54.603Z"
+  },
+  {
+    "id": 6,
+    "scene_id": 1,
+    "sign_id": 115,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T05:06:54.608Z"
+  },
+  {
+    "id": 7,
+    "scene_id": 1,
+    "sign_id": 120,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T05:14:36.163Z"
+  },
+  {
+    "id": 8,
+    "scene_id": 1,
+    "sign_id": 166,
+    "installation_height": 1.5,
+    "observation_distance": 3,
+    "special_requirements": "",
+    "added_at": "2026-05-14T05:23:02.654Z"
+  }
+]

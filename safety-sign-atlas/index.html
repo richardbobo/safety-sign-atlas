@@ -389,19 +389,21 @@
     </div>
     
     <div class="nav">
-        <button class="active" onclick="showPage('sign-library')">🏷️ 标志图集</button>
+        <button onclick="showPage('sign-library')">🏷️ 标志图集</button>
         <button onclick="showPage('create-scene')">➕ 创建场景</button>
-        <button onclick="showPage('scene-list')">📋 场景列表</button>
+        <button class="active" onclick="showPage('scene-list')">📋 场景列表</button>
     </div>
     
     <!-- 标志图集 -->
-    <div id="sign-library" class="page active">
+    <div id="sign-library" class="page">
         <h2>标志图集管理</h2>
         <p>管理所有安全标志，按类型分类：警告(黄)、禁止(红)、指令(蓝)、提示(绿)</p>
         
-        <div style="margin: 20px 0;">
-            <button class="btn" onclick="loadSigns()">刷新标志列表</button>
-            <button class="btn btn-success" onclick="showAddSignForm()">添加新标志（优化流程）</button>
+        <div style="margin: 20px 0; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <input type="text" id="sign-search-input" placeholder="🔍 搜索标志名称、编码..." style="flex: 1; min-width: 200px; padding: 8px 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 0.95rem;" onkeydown="if(event.key === 'Enter') filterSignsBySearch()">
+            <button class="btn" onclick="loadSigns()">刷新列表</button>
+            <button class="btn btn-success" onclick="showAddSignForm()">添加新标志</button>
+            <button class="btn btn-primary" onclick="filterSignsBySearch()" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">🔍 搜索</button>
         </div>
         
         <div id="signs-container">
@@ -438,17 +440,15 @@
                     <label class="form-label">第一步：上传标志图片</label>
                     <div class="upload-area" onclick="document.getElementById('image-upload').click()">
                         <div class="upload-icon">📷</div>
-                        <div>点击上传标志图片</div>
+                        <div>点击上传标志图片（可多选）</div>
                         <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">支持 JPG、PNG 格式，建议尺寸 300x300px</div>
-                        <div style="font-size: 0.9rem; color: #667eea; margin-top: 10px; font-weight: bold;">上传后图片会在后续所有步骤中显示</div>
+                        <div style="font-size: 0.9rem; color: #667eea; margin-top: 10px; font-weight: bold;">可多选图片文件，批量添加同一类型的安全标志</div>
                     </div>
-                    <input type="file" id="image-upload" accept="image/*" style="display: none;" onchange="previewImage(event)">
+                    <input type="file" id="image-upload" accept="image/*" multiple style="display: none;" onchange="previewImage(event)">
                     
                     <div id="image-preview-container" style="display: none;">
-                        <div style="font-weight: bold; margin: 10px 0 5px 0;">图片预览：</div>
-                        <img id="image-preview" class="image-preview" alt="图片预览">
-                        <div style="margin-top: 5px;">
-                            <button type="button" class="btn btn-secondary" onclick="removeImage()" style="padding: 5px 10px; font-size: 0.9rem;">重新上传</button>
+                        <div style="font-weight: bold; margin: 10px 0 5px 0;">已选中图片（<span id="selected-count">0</span> 张）：</div>
+                        <div id="thumbnail-list" style="display: flex; flex-wrap: wrap; gap: 12px;">
                         </div>
                     </div>
                 </div>
@@ -661,7 +661,7 @@
     </div>
     
     <!-- 场景列表 -->
-    <div id="scene-list" class="page">
+    <div id="scene-list" class="page active">
         <h2>场景列表</h2>
         <div id="scenes-container">
             <div class="loading">加载场景列表...</div>
