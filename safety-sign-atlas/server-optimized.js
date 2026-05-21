@@ -6,7 +6,7 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 
 const app = express();
-const PORT = 8000;
+const PORT = Number(process.env.PORT) || 8000;
 
 // 中间件
 app.use(cors());
@@ -29,49 +29,86 @@ const db = new sqlite3.Database('./safety_signs.db', (err) => {
     }
 });
 
+// 数据库辅助函数
+function runSql(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) { if (err) return reject(err); resolve(this); });
+    });
+}
+function getSql(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => { if (err) return reject(err); resolve(row); });
+    });
+}
+function allSql(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => { if (err) return reject(err); resolve(rows); });
+    });
+}
+function readJsonData(fileName) {
+    const fp = path.join(__dirname, 'data', fileName);
+    if (!fs.existsSync(fp)) return [];
+    try { return JSON.parse(fs.readFileSync(fp, 'utf8')); }
+    catch (e) { console.warn('JSON read failed', fileName, e.message); return []; }
+}
+function normalizeSignType(type) {
+    const t = type === 'notification' ? 'information' : type;
+    return ['warning','prohibition','instruction','information'].includes(t) ? t : 'warning';
+}
+async function migrateJsonDataIfNeeded() {
+    try {
+        const sc = await getSql('SELECT COUNT(*) as c FROM sign_library');
+        if (sc.c === 0) {
+            const signs = readJsonData('signs.json');
+            for (const s of signs) {
+                await runSql('INSERT OR IGNORE INTO sign_library(id,sign_code,sign_name,sign_type,color_scheme,standard_size,material,description,image_url,is_ppe,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                    [s.id||null, s.sign_code||'SIGN-'+Date.now(), s.sign_name||'', normalizeSignType(s.sign_type), s.color_scheme||'', s.standard_size||'', s.material||'', s.description||'', s.image_url||'', s.is_ppe?1:0, s.created_at||new Date().toISOString(), s.updated_at||s.created_at||new Date().toISOString()]);
+            }
+            console.log('迁移', signs.length, '个标志');
+        }
+        const cc = await getSql('SELECT COUNT(*) as c FROM scenes_new');
+        if (cc.c === 0) {
+            const scenes = readJsonData('scenes.json');
+            for (const s of scenes) {
+                await runSql('INSERT OR IGNORE INTO scenes_new(id,scene_code,scene_name,department,hazard_tags,location_description,installation_notes,scene_image_url,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                    [s.id||null, s.scene_code||'SCENE-'+String(s.id||Date.now()).padStart(3,'0'), s.scene_name||'', s.department||'', s.hazard_tags||'', s.location_description||'', s.installation_notes||'', s.scene_image_url||'', s.created_at||new Date().toISOString(), s.updated_at||s.created_at||new Date().toISOString()]);
+            }
+            console.log('迁移', scenes.length, '个场景');
+        }
+        const rc = await getSql('SELECT COUNT(*) as c FROM scene_signs');
+        if (rc.c === 0) {
+            const rels = readJsonData('scene_signs.json');
+            for (const r of rels) {
+                await runSql('INSERT OR IGNORE INTO scene_signs(id,scene_id,sign_id,display_order,installation_height,observation_distance,special_requirements,added_at) VALUES(?,?,?,?,?,?,?,?)',
+                    [r.id||null, r.scene_id, r.sign_id, r.display_order||r.id||1, r.installation_height||'', r.observation_distance||'', r.special_requirements||'', r.added_at||new Date().toISOString()]);
+            }
+            console.log('迁移', rels.length, '条关联');
+        }
+        const tc = await getSql('SELECT COUNT(*) as c FROM custom_hazard_tags');
+        if (tc.c === 0) {
+            const tags = readJsonData('hazard_tags.json');
+            for (const t of tags) {
+                if (!t.tag_id||!t.tag_name) continue;
+                await runSql('INSERT OR IGNORE INTO custom_hazard_tags(id,tag_id,tag_name,color,created_at) VALUES(?,?,?,?,?)',
+                    [t.id||null, t.tag_id, t.tag_name, t.color||'#a78bfa', t.created_at||new Date().toISOString()]);
+            }
+            console.log('迁移', tags.length, '个标签');
+        }
+    } catch (e) { console.error('数据迁移失败:', e.message); }
+}
+
 // 初始化数据库
 function initializeDatabase() {
-    // 确保使用新的表结构
-    db.run(`CREATE TABLE IF NOT EXISTS scenes_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        scene_code TEXT NOT NULL UNIQUE,
-        scene_name TEXT NOT NULL,
-        department TEXT NOT NULL,
-        hazard_tags TEXT,
-        location_description TEXT,
-        installation_notes TEXT,
-        scene_image_url TEXT,  -- 新增：场景图片URL
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS sign_library (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sign_code TEXT NOT NULL UNIQUE,
-        sign_name TEXT NOT NULL,
-        sign_type TEXT NOT NULL CHECK(sign_type IN ('warning', 'prohibition', 'instruction', 'information')),
-        color_scheme TEXT NOT NULL,
-        standard_size TEXT NOT NULL,
-        material TEXT NOT NULL,
-        description TEXT,
-        image_url TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    db.run(`CREATE TABLE IF NOT EXISTS scene_signs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        scene_id INTEGER NOT NULL,
-        sign_id INTEGER NOT NULL,
-        display_order INTEGER NOT NULL,
-        installation_height TEXT,
-        observation_distance TEXT,
-        special_requirements TEXT,
-        FOREIGN KEY (scene_id) REFERENCES scenes_new(id) ON DELETE CASCADE,
-        FOREIGN KEY (sign_id) REFERENCES sign_library(id) ON DELETE CASCADE,
-        UNIQUE(scene_id, sign_id, display_order)
-    )`);
-
+    db.serialize(() => {
+    db.run('PRAGMA foreign_keys = ON');
+    db.run('CREATE TABLE IF NOT EXISTS scenes_new (id INTEGER PRIMARY KEY AUTOINCREMENT, scene_code TEXT NOT NULL UNIQUE, scene_name TEXT NOT NULL, department TEXT NOT NULL, hazard_tags TEXT, location_description TEXT, installation_notes TEXT, scene_image_url TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+    db.run('CREATE TABLE IF NOT EXISTS sign_library (id INTEGER PRIMARY KEY AUTOINCREMENT, sign_code TEXT NOT NULL UNIQUE, sign_name TEXT NOT NULL, sign_type TEXT NOT NULL CHECK(sign_type IN (\'warning\',\'prohibition\',\'instruction\',\'information\')), color_scheme TEXT NOT NULL, standard_size TEXT NOT NULL, material TEXT NOT NULL, description TEXT, image_url TEXT, is_ppe INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+    db.run('CREATE TABLE IF NOT EXISTS scene_signs (id INTEGER PRIMARY KEY AUTOINCREMENT, scene_id INTEGER NOT NULL, sign_id INTEGER NOT NULL, display_order INTEGER NOT NULL, installation_height TEXT, observation_distance TEXT, special_requirements TEXT, added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (scene_id) REFERENCES scenes_new(id) ON DELETE CASCADE, FOREIGN KEY (sign_id) REFERENCES sign_library(id) ON DELETE CASCADE, UNIQUE(scene_id, sign_id, display_order))');
+    db.run('CREATE TABLE IF NOT EXISTS custom_hazard_tags (id INTEGER PRIMARY KEY AUTOINCREMENT, tag_id TEXT NOT NULL UNIQUE, tag_name TEXT NOT NULL, color TEXT DEFAULT \'#a78bfa\', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)', (err) => {
+        if (err) { console.error('custom_hazard_tags init failed:', err.message); return; }
+        migrateJsonDataIfNeeded();
+    });
+    });
     console.log('数据库表初始化完成');
 }
 
