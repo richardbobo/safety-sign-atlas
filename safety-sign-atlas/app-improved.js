@@ -1038,13 +1038,13 @@ function getHazardTagName(tagId) {
     
     // 如果是自定义标签（以custom_开头），尝试从自定义标签列表中查找
     if (tagId.startsWith('custom_')) {
-        // 从当前会话的自定义标签中查找
         const customTag = customHazardTags.find(tag => tag.tag_id === tagId);
         if (customTag) {
             return customTag.tag_name;
         }
+        return '已删除的标签';
     }
-    
+
     // 如果都不是，返回原始ID
     return tagId;
 }
