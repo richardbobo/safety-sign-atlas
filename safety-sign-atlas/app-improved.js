@@ -2155,103 +2155,53 @@ async function exportSceneToPDF(sceneId) {
 function createPDFContent(scene) {
     const now = new Date();
     const formattedTime = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-    
-    return `
-        <div style="font-family: 'Microsoft YaHei', 'SimHei', Arial, sans-serif; color: #333; line-height: 1.5;">
-            <!-- 标题 -->
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #2c3e50; margin-bottom: 10px; font-size: 24px;">安全标志张贴指导文件</h1>
-                <div style="color: #7f8c8d; font-size: 14px;">生成时间: ${formattedTime}</div>
-            </div>
-            
-            <!-- 场景信息 -->
-            <div style="margin-bottom: 30px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: #f8f9fa;">
-                <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">场景信息</h2>
-                
-                ${scene.scene_image_url ? `
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="font-weight: bold; margin-bottom: 10px; color: #666;">场景图片:</div>
-                        <img src="${getFullImageUrl(scene.scene_image_url)}" 
-                             style="max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid #e0e0e0; background: white;"
-                             alt="场景图片">
-                    </div>
-                ` : ''}
-                
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 8px 0; width: 120px; font-weight: bold;">场景名称:</td>
-                        <td style="padding: 8px 0;">${scene.scene_name}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; font-weight: bold;">场景编码:</td>
-                        <td style="padding: 8px 0;">${scene.scene_code}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; font-weight: bold;">所属部门:</td>
-                        <td style="padding: 8px 0;">${scene.department}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; font-weight: bold;">位置描述:</td>
-                        <td style="padding: 8px 0;">${scene.location_description || '未填写'}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; font-weight: bold;">危险源标签:</td>
-                        <td style="padding: 8px 0;">${scene.hazard_tags ? scene.hazard_tags.split(',').filter(t=>t.trim()).map(tag => {
-                            const name = getHazardTagName(tag.trim());
-                            const color = getHazardTagColor(tag.trim());
-                            return `<span style="display:inline-block;background:${color}20;color:${color};border:1px solid ${color};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px;">${name}</span>`;
-                        }).join('') : '无'}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; font-weight: bold;">安装备注:</td>
-                        <td style="padding: 8px 0;">${scene.installation_notes || '无'}</td>
-                    </tr>
-                </table>
-            </div>
-            
-            <!-- 安全标志列表 -->
-            <div style="margin-bottom: 30px;">
-                <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">安全标志列表 (共${scene.signs.length}个)</h2>
 
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-                    ${sortSignsByType(scene.signs).map((sign) => {
-                        const imgUrl = getFullImageUrl(sign.image_url);
-                        return `<div style="border:1px solid #e0e0e0;border-radius:6px;padding:6px;background:#fff;text-align:center;"><img src="${imgUrl}" style="width:100%;height:100px;object-fit:contain;border-radius:4px;background:#f8f9fa;" onerror="this.onerror=null;this.style.display='none';"></div>`;
-                    }).join('')}
+    const sortedSigns = sortSignsByType(scene.signs);
+    // 根据标志数量动态计算每行个数
+    const colsPerRow = sortedSigns.length <= 4 ? sortedSigns.length : sortedSigns.length <= 8 ? 4 : 5;
+    const imgSize = sortedSigns.length <= 4 ? 160 : sortedSigns.length <= 8 ? 120 : 100;
+
+    return `
+        <div style="font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;color:#333;line-height:1.3;font-size:13px;">
+            <!-- 标题行 -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:2px solid #3498db;padding-bottom:6px;">
+                <div>
+                    <h1 style="color:#2c3e50;margin:0;font-size:20px;">安全标志张贴指导文件</h1>
+                    <div style="color:#7f8c8d;font-size:11px;margin-top:2px;">${formattedTime}</div>
+                </div>
+                <div style="text-align:right;font-size:12px;">
+                    <div><b>${scene.scene_name}</b></div>
+                    <div style="color:#666;">${scene.scene_code} | ${scene.department}</div>
+                    <div style="color:#666;">${scene.location_description||''}</div>
+                    <div style="margin-top:2px;">${scene.hazard_tags ? scene.hazard_tags.split(',').filter(t=>t.trim()).map(tag => {
+                        const name = getHazardTagName(tag.trim());
+                        const color = getHazardTagColor(tag.trim());
+                        return '<span style="display:inline-block;background:'+color+'20;color:'+color+';border:1px solid '+color+';padding:1px 6px;border-radius:10px;font-size:10px;margin:1px 2px;">'+name+'</span>';
+                    }).join('') : '无'}</div>
                 </div>
             </div>
 
-            <!-- 张贴指导 -->
-            <div style="margin-bottom: 30px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: #f0f9ff; border-left: 4px solid #3498db;">
-                <h2 style="color: #2c3e50; margin-bottom: 15px; font-size: 18px;">现场张贴指导</h2>
-                
-                <h3 style="color: #1e40af; margin-bottom: 10px; font-size: 16px;">张贴顺序建议:</h3>
-                <ol style="margin: 0 0 20px 20px; padding: 0;">
-                    ${sortSignsByType(scene.signs).map((sign, index) => `
-                        <li style="margin-bottom: 8px;">
-                            <strong>${sign.sign_name} (${sign.sign_code})</strong>
-                            - 安装高度: ${sign.installation_height || '1.5'}米
-                            - 观察距离: ${sign.observation_distance || '3'}米
-                            ${sign.special_requirements ? `- 特殊要求: ${sign.special_requirements}` : ''}
-                        </li>
-                    `).join('')}
-                </ol>
-                
-                <h3 style="color: #1e40af; margin-bottom: 10px; font-size: 16px;">注意事项:</h3>
-                <ul style="margin: 0 0 0 20px; padding: 0; color: #666;">
-                    <li style="margin-bottom: 5px;"><strong>张贴顺序：</strong>按照警告→禁止→指令→信息的顺序进行张贴，确保标志的可见性和逻辑性</li>
-                    <li style="margin-bottom: 5px;"><strong>安装高度：</strong>安装高度应符合人体工程学，便于观察（一般1.2-1.8米）</li>
-                    <li style="margin-bottom: 5px;"><strong>标志清洁：</strong>确保标志表面清洁，无遮挡物，保持清晰可见</li>
-                    <li style="margin-bottom: 5px;"><strong>定期检查：</strong>定期检查标志的完整性和清晰度，及时更换损坏标志</li>
-                    <li style="margin-bottom: 5px;"><strong>危险区域：</strong>危险区域必须设置相应的安全标志，确保人员安全</li>
-                    <li style="margin-bottom: 5px;"><strong>防护装备：</strong>PPE（个人防护装备）标志应设置在更衣室、设备存放处等位置</li>
-                </ul>
+            ${scene.scene_image_url ? `
+            <div style="text-align:center;margin-bottom:10px;">
+                <img src="${getFullImageUrl(scene.scene_image_url)}" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;" alt="场景图片">
+            </div>` : ''}
+
+            <!-- 安全标志图片网格 -->
+            <div style="display:grid;grid-template-columns:repeat(${colsPerRow},1fr);gap:6px;margin-bottom:10px;">
+                ${sortedSigns.map((sign) => {
+                    const imgUrl = getFullImageUrl(sign.image_url);
+                    return '<div style="text-align:center;"><img src="'+imgUrl+'" style="width:100%;height:'+imgSize+'px;object-fit:contain;border-radius:4px;background:#f8f9fa;border:1px solid #eee;" onerror="this.onerror=null;this.style.display=\'none\';"></div>';
+                }).join('')}
             </div>
-            
+
+            <!-- 注意事项（紧凑） -->
+            <div style="font-size:10px;color:#666;border-top:1px solid #ecf0f1;padding-top:6px;">
+                <b>注意事项：</b>按照警告→禁止→指令→信息顺序张贴 | 安装高度1.2-1.8米 | 保持标志清洁、无遮挡 | 定期检查完整性和清晰度 | PPE标志设在更衣室等位置
+            </div>
+
             <!-- 页脚 -->
-            <div style="text-align: center; color: #95a5a6; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1;">
-                <div>安全标志图集管理系统 - 生成于 ${formattedTime}</div>
-                <div style="margin-top: 5px;">本文件用于指导现场安全标志张贴工作，请妥善保管</div>
+            <div style="text-align:center;color:#95a5a6;font-size:10px;margin-top:8px;padding-top:6px;border-top:1px solid #ecf0f1;">
+                安全标志图集管理系统 | 生成于 ${formattedTime}
             </div>
         </div>
     `;
