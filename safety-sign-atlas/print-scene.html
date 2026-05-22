@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安全标志张贴指导</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Microsoft YaHei','SimHei',Arial,sans-serif; color: #333; padding: 20px 30px; max-width: 900px; margin: 0 auto; }
+    .header { border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; }
+    .header h1 { font-size: 20px; color: #2c3e50; margin-bottom: 4px; }
+    .header .meta { font-size: 12px; color: #666; display: flex; justify-content: space-between; flex-wrap: wrap; }
+    .header .meta span { margin-right: 10px; }
+    .scene-img { text-align: center; margin-bottom: 15px; }
+    .scene-img img { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; border: 1px solid #e0e0e0; }
+    .signs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+    .signs-grid.col2 { grid-template-columns: repeat(2, 1fr); }
+    .signs-grid.col3 { grid-template-columns: repeat(3, 1fr); }
+    .sign-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; text-align: center; background: #fff; }
+    .sign-card img { width: 100%; height: 140px; object-fit: contain; border-radius: 4px; background: #f8f9fa; }
+    .sign-card .name { font-size: 11px; font-weight: bold; margin-top: 4px; color: #333; }
+    .sign-card .code { font-size: 10px; color: #666; }
+    .sign-card .info { font-size: 10px; color: #999; margin-top: 2px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin: 2px 3px; }
+    .footer { border-top: 1px solid #eee; padding-top: 8px; font-size: 10px; color: #999; text-align: center; margin-top: 10px; }
+    @media print {
+        body { padding: 10px 15px; }
+        .signs-grid { gap: 4px; }
+        .sign-card { padding: 4px; }
+        .sign-card img { height: 120px; }
+    }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>安全标志张贴指导文件</h1>
+    <div class="meta">
+        <span id="timeStr"></span>
+        <span id="sceneInfo"></span>
+    </div>
+    <div id="tagsRow" style="margin-top: 4px;"></div>
+</div>
+<div class="scene-img" id="sceneImg" style="display:none;"></div>
+<div id="signsContainer"></div>
+<div class="footer" id="footer"></div>
+
+<script>
+const API_BASE = window.location.origin + '/api';
+const params = new URLSearchParams(window.location.search);
+const sceneId = params.get('id');
+
+if (!sceneId) {
+    document.body.innerHTML = '<h3>缺少场景ID参数</h3>';
+} else {
+    fetch(API_BASE + '/scenes/' + sceneId).then(r => r.json()).then(scene => {
+        document.title = '安全标志张贴 - ' + scene.scene_name;
+        var now = new Date();
+        var ts = now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+        document.getElementById('timeStr').textContent = '生成: ' + ts;
+        document.getElementById('sceneInfo').innerHTML = '<span><b>' + scene.scene_name + '</b></span><span>' + scene.scene_code + '</span><span>' + scene.department + '</span>' + (scene.location_description ? '<span>位置: ' + scene.location_description + '</span>' : '');
+
+        // Hazard tags
+        if (scene.hazard_tags) {
+            var tags = scene.hazard_tags.split(',').filter(t => t.trim());
+            document.getElementById('tagsRow').innerHTML = tags.map(function(t) {
+                var name = t.trim();
+                var color = '#667eea';
+                if (t.startsWith('custom_')) {
+                    // Try to resolve — use simple fallbacks
+                    name = t.replace('custom_', '标签');
+                } else {
+                    var map = { electric:'触电危险', fire:'火灾危险', chemical:'化学品危险', mechanical:'机械伤害', fall:'坠落危险', noise:'噪音危害', dust:'粉尘危害', radiation:'辐射危险', high_temp:'高温烫伤', low_temp:'低温冻伤', slippery:'滑倒危险', confined:'受限空间' };
+                    name = map[t.trim()] || t.trim();
+                    var cmap = { electric:'#92400e', fire:'#dc2626', chemical:'#7c3aed', mechanical:'#ea580c', fall:'#059669', noise:'#b91c1c', dust:'#92400e', radiation:'#a21caf', high_temp:'#ea580c', low_temp:'#0891b2', slippery:'#ca8a04', confined:'#6d28d9' };
+                    color = cmap[t.trim()] || '#667eea';
+                }
+                return '<span class="tag" style="background:'+color+'20;color:'+color+';border:1px solid '+color+';">'+name+'</span>';
+            }).join('');
+        }
+
+        // Scene image
+        if (scene.scene_image_url) {
+            document.getElementById('sceneImg').style.display = 'block';
+            document.getElementById('sceneImg').innerHTML = '<img src="' + scene.scene_image_url + '" alt="场景图片">';
+        }
+
+        // Signs grid
+        var signs = (scene.signs||[]).sort(function(a,b){
+            var o = { warning:1, prohibition:2, instruction:3, information:4 };
+            return (o[a.sign_type]||5) - (o[b.sign_type]||5);
+        });
+        var grid = document.getElementById('signsContainer');
+        var cls = signs.length <= 4 ? 'signs-grid col2' : signs.length <= 8 ? 'signs-grid col3' : 'signs-grid';
+        grid.className = cls;
+        signs.forEach(function(s){
+            var typeNames = { warning:'警告', prohibition:'禁止', instruction:'指令', information:'提示' };
+            grid.innerHTML += '<div class="sign-card"><img src="'+(s.image_url||'')+'" onerror="this.style.display=\'none\'"><div class="name">'+s.sign_name+'</div><div class="code">'+s.sign_code+'</div><div class="info">'+ (typeNames[s.sign_type]||'') +' | '+ (s.installation_height||'1.5')+'m | '+ (s.observation_distance||'3')+'m</div></div>';
+        });
+
+        document.getElementById('footer').textContent = '安全标志图集管理系统 | ' + ts;
+    }).catch(function(e){
+        document.body.innerHTML = '<h3>加载失败: ' + e.message + '</h3>';
+    });
+}
+</script>
+</body>
+</html>
