@@ -99,14 +99,23 @@ Promise.all([
         hazardRows+='<tr><td><span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span></td><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>';
     });
 
-    // Sign type distribution
-    var typeMap={warning:0,prohibition:0,instruction:0,information:0};
-    signs.forEach(function(s){if(typeMap[s.sign_type]!==undefined) typeMap[s.sign_type]++;});
+    // Sign library type distribution
+    var libMap={warning:0,prohibition:0,instruction:0,information:0};
+    signs.forEach(function(s){if(libMap[s.sign_type]!==undefined) libMap[s.sign_type]++;});
     var typeNames={warning:'警告',prohibition:'禁止',instruction:'指令',information:'提示'};
-    var maxType=Math.max.apply(null,Object.values(typeMap))||1;
-    var typeRows='';
-    Object.entries(typeMap).forEach(function(e){
-        typeRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxType*100),e[0])+'</td></tr>';
+    var maxLib=Math.max.apply(null,Object.values(libMap))||1;
+    var libRows='';
+    Object.entries(libMap).forEach(function(e){
+        libRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxLib*100),e[0])+'</td></tr>';
+    });
+
+    // Scene-configured sign type distribution
+    var configuredMap={warning:0,prohibition:0,instruction:0,information:0};
+    scenes.forEach(function(s){(s.signs||[]).forEach(function(sg){if(configuredMap[sg.sign_type]!==undefined) configuredMap[sg.sign_type]++;});});
+    var maxCfg=Math.max.apply(null,Object.values(configuredMap))||1;
+    var cfgRows='';
+    Object.entries(configuredMap).forEach(function(e){
+        cfgRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxCfg*100),e[0])+'</td></tr>';
     });
 
     // Scene with most signs
@@ -126,7 +135,11 @@ Promise.all([
         '</div>'+
 
         '<div class=charts>'+
-            '<div class=section><h2>标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+typeRows+'</tbody></table></div>'+
+            '<div class=section><h2>标志库类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+libRows+'</tbody></table></div>'+
+            '<div class=section><h2>场景已配置标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+cfgRows+'</tbody></table></div>'+
+        '</div>'+
+
+        '<div class=charts>'+
             '<div class=section><h2>标志最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>标志数</th></tr></thead><tbody>'+
                 topScenes.map(function(s){return '<tr><td><b>'+s.scene_name+'</b> <span style=color:#9ca3af;font-size:0.8rem;>'+s.scene_code+'</span></td><td>'+s.department+'</td><td>'+s.sign_count+'</td></tr>';}).join('')+
             '</tbody></table></div>'+
