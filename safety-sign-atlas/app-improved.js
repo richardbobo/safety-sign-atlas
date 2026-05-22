@@ -2531,7 +2531,7 @@ function addSignsToScene(sceneId, sceneName, sceneCode) {
     // 重置筛选状态
     currentTypeFilter = 'all';
     currentSearchTerm = '';
-    const searchInput = document.getElementById('sign-search-input');
+    const searchInput = document.getElementById('modal-sign-search-input');
     if (searchInput) searchInput.value = '';
     document.querySelectorAll('.sign-type-filter').forEach(b => b.classList.remove('active'));
     const allBtn = document.querySelector('.sign-type-filter[data-type="all"]');
@@ -2670,7 +2670,7 @@ function renderSignCards() {
     const container = document.getElementById('sign-selector-container');
     if (!container) return;
     const type = document.querySelector('.sign-type-filter.active')?.dataset?.type || 'all';
-    const keyword = (document.getElementById('sign-search-input')?.value || '').toLowerCase();
+    const keyword = (document.getElementById('modal-sign-search-input')?.value || '').toLowerCase();
 
     const filtered = allSignsCache.filter(s => {
         const typeMatch = type === 'all' || s.sign_type === type || (type === 'notification' && s.sign_type === 'information');
