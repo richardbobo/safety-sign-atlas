@@ -1043,8 +1043,6 @@ function filterScenes() {
 function renderSceneTable(scenes) {
     var c = document.getElementById('scenes-container');
     if (!scenes.length) { c.innerHTML = '<div class="message">暂无场景数据</div>'; return; }
-    var tm = { electric:'触电危险', fire:'火灾危险', chemical:'化学品危险', mechanical:'机械伤害', fall:'坠落危险', noise:'噪音危害', dust:'粉尘危害', radiation:'辐射危险', high_temp:'高温烫伤', low_temp:'低温冻伤', slippery:'滑倒危险', confined:'受限空间' };
-    var tc = { electric:'#92400e', fire:'#dc2626', chemical:'#7c3aed', mechanical:'#ea580c', fall:'#059669', noise:'#b91c1c', dust:'#92400e', radiation:'#a21caf', high_temp:'#ea580c', low_temp:'#0891b2', slippery:'#ca8a04', confined:'#6d28d9' };
     var h = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:#f3f4f6;">'+
         '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">场景编号</th>'+
         '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">场景名称</th>'+
@@ -1055,7 +1053,7 @@ function renderSceneTable(scenes) {
         '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">操作</th></tr></thead><tbody>';
     scenes.forEach(function(s){
         var tags='';
-        if(s.hazard_tags){s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){var n=tm[t]||t;var c=tc[t]||'#667eea';tags+='<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:1px 6px;border-radius:8px;font-size:0.7rem;margin:1px;">'+n+'</span>';});}
+        if(s.hazard_tags){s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){var tid=t.trim();var n=getHazardTagName(tid);var c=getHazardTagColor(tid);tags+='<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:1px 6px;border-radius:8px;font-size:0.7rem;margin:1px;">'+n+'</span>';});}
         var signs=s.signs||[];
         var imgs='';
         if(signs.length>0){signs.slice(0,5).forEach(function(sg){if(sg.image_url){imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;" onerror="this.style.display=\'none\'">';}});if(signs.length>5) imgs+='<span style="font-size:0.7rem;color:#9ca3af;">+'+ (signs.length-5)+'</span>';}
