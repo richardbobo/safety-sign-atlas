@@ -39,17 +39,35 @@ var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c
 
 function loadCustomTags(){return fetch(API+'/custom-hazard-tags').then(function(r){return r.json();}).catch(function(){return[];});}
 
-// 图片URL转base64（缓存）
+// 图片URL转base64（使用Image+Canvas，兼容本地文件）
 var base64Cache = {};
 function urlToBase64(url) {
     if (base64Cache[url]) return Promise.resolve(base64Cache[url]);
-    return fetch(url).then(function(r){return r.blob();}).then(function(blob){
-        return new Promise(function(resolve){
-            var reader = new FileReader();
-            reader.onloadend = function() { base64Cache[url] = reader.result; resolve(reader.result); };
-            reader.readAsDataURL(blob);
-        });
-    }).catch(function(){ return ''; });
+    // 确保使用绝对URL
+    var absUrl = url;
+    if (url.indexOf('://') === -1) {
+        absUrl = (url.charAt(0) === '/' ? '' : '/') + url;
+    }
+    return new Promise(function(resolve) {
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+            try {
+                var canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                var dataUrl = canvas.toDataURL('image/png');
+                base64Cache[url] = dataUrl;
+                resolve(dataUrl);
+            } catch(e) {
+                resolve('');
+            }
+        };
+        img.onerror = function() { resolve(''); };
+        img.src = absUrl;
+    });
 }
 
 Promise.all([fetch(API+'/scenes').then(function(r){return r.json();}), loadCustomTags()]).then(function(results){
