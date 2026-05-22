@@ -2540,35 +2540,83 @@ function addSignsToScene(sceneId, sceneName, sceneCode) {
     loadSignsForSelection();
 }
 
-// 加载标志选择器
+// 加载标志选择器（改进版，显示图片）
 async function loadSignsForSelection() {
     const container = document.getElementById('sign-selector-container');
-    if (!container) return;
     container.innerHTML = '<div class="loading">加载标志列表...</div>';
-
+    
     try {
         const res = await fetch(`${API_BASE}/signs`);
         const signs = await res.json();
-
+        
         if (signs.length === 0) {
             container.innerHTML = '<div class="message">暂无标志数据，请先添加标志</div>';
             return;
         }
-
-        allSignsCache = signs;
-        // 恢复之前的选中状态
-        const selectedIds = new Set();
-        document.querySelectorAll('#sign-preview-container .preview-sign-item').forEach(el => {
-            selectedIds.add(el.id.replace('preview-sign-', ''));
+        
+        // 按类型分组
+        const signsByType = {
+            warning: signs.filter(s => s.sign_type === 'warning'),
+            prohibition: signs.filter(s => s.sign_type === 'prohibition'),
+            instruction: signs.filter(s => s.sign_type === 'instruction'),
+            information: signs.filter(s => s.sign_type === 'information')
+        };
+        
+        let html = '';
+        
+        // 按类型顺序显示：警告→禁止→指令→信息
+        const typeOrder = ['warning', 'prohibition', 'instruction', 'information'];
+        const typeNames = {
+            warning: '🟡 警告标志',
+            prohibition: '🔴 禁止标志',
+            instruction: '🔵 指令标志',
+            information: '🟢 信息标志'
+        };
+        
+        typeOrder.forEach(type => {
+            const typeSigns = signsByType[type];
+            if (typeSigns.length > 0) {
+                html += `<div style="margin-bottom: 15px;">`;
+                html += `<div style="font-weight: bold; margin-bottom: 8px; color: #333; font-size: 0.9rem;">${typeNames[type]}</div>`;
+                html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;">';
+                
+                typeSigns.forEach(sign => {
+                    // 如果有图片，显示图片；否则显示占位符
+                    const imageUrl = sign.image_url || '';
+                    const imageHtml = imageUrl 
+                        ? `<img src="${imageUrl}" style="width: 100%; height: 80px; object-fit: contain; border-radius: 6px; background: white; border: 1px solid #e9ecef;">`
+                        : `<div style="width: 100%; height: 80px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; color: #999; font-size: 0.8rem;">暂无图片</div>`;
+                    
+                    html += `
+                        <div class="sign-card-selectable" data-sign-id="${sign.id}" data-sign-type="${sign.sign_type}" data-sign-name="${sign.sign_name.replace(/"/g, '&quot;')}" onclick="toggleSignSelection(${sign.id}, '${sign.sign_code}', '${sign.sign_name.replace(/'/g, "\\'")}', '${imageUrl.replace(/'/g, "\\'")}')">
+                            <div style="position: relative;">
+                                ${imageHtml}
+                                <div style="position: absolute; top: 5px; right: 5px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #28a745; display: none;" id="selected-indicator-${sign.id}">
+                                    ✓
+                                </div>
+                                <button class="add-sign-btn" style="position: absolute; bottom: 5px; right: 5px; background: #007bff; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer;">
+                                    +
+                                </button>
+                            </div>
+                            <div style="padding: 5px 0; text-align: center;">
+                                <div style="font-size: 0.8rem; font-weight: bold; color: #333;">${sign.sign_code}</div>
+                                <div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sign.sign_name}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            }
         });
-        allSignsCache.forEach(s => { s._selected = selectedIds.has(String(s.id)); });
-        renderSignCards();
-        window._searchSigns = filterModalSignsBySearch;
-
+        
+        container.innerHTML = html;
+        
     } catch (error) {
         console.error('加载标志列表失败:', error);
         container.innerHTML = `<div class="message error">加载失败: ${error.message}</div>`;
     }
+    window._searchSigns = filterModalSignsBySearch;
 }
 
 // 获取标志颜色类
@@ -2595,26 +2643,42 @@ function getSignTypeEmoji(type) {
 
 // 切换标志选择（改进版，支持图片预览）
 function toggleSignSelection(signId, signCode, signName, imageUrl) {
-    const sign = allSignsCache.find(s => String(s.id) === String(signId));
+    const signCard = document.querySelector(`.sign-card-selectable[data-sign-id="${signId}"]`);
+    const selectedIndicator = document.getElementById(`selected-indicator-${signId}`);
     const previewContainer = document.getElementById('sign-preview-container');
-
-    if (sign && sign._selected) {
+    
+    if (signCard.classList.contains('selected')) {
         // 取消选择
-        sign._selected = false;
+        signCard.classList.remove('selected');
+        selectedIndicator.style.display = 'none';
+        
+        // 从预览中移除
         const previewItem = document.getElementById(`preview-sign-${signId}`);
-        if (previewItem) previewItem.remove();
+        if (previewItem) {
+            previewItem.remove();
+        }
     } else {
         // 选择标志
-        if (sign) sign._selected = true;
-        // 清除空状态
-        const emptyHint = previewContainer ? previewContainer.querySelector('#preview-empty-hint') : null;
-        if (emptyHint) previewContainer.innerHTML = '';
-
+        signCard.classList.add('selected');
+        selectedIndicator.style.display = 'flex';
+        
+        // 清除空状态提示（用特定选择器避免误删已选标志预览）
+        const emptyHint = previewContainer.querySelector('#preview-empty-hint');
+        if (emptyHint) {
+            previewContainer.innerHTML = '';
+        }
+        
         // 创建预览项
         const previewItem = document.createElement('div');
         previewItem.className = 'preview-sign-item';
         previewItem.id = `preview-sign-${signId}`;
-        previewItem.style.cssText = 'position:relative;display:inline-block;margin:5px;text-align:center;max-width:100px;';
+        previewItem.style.cssText = `
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+            text-align: center;
+            max-width: 100px;
+        `;
         
         // 图片或占位符
         const imageHtml = imageUrl 
@@ -2630,29 +2694,41 @@ function toggleSignSelection(signId, signCode, signName, imageUrl) {
             </button>
         `;
         
-        if (previewContainer) previewContainer.appendChild(previewItem);
+        previewContainer.appendChild(previewItem);
     }
-
-    // 刷新标志卡片显示
-    renderSignCards();
+    
+    // 更新安装信息表单显示
     updateInstallationInfoVisibility();
 }
 
-// 移除已选标志
+// 移除已选标志（改进版）
 function removeSelectedSign(signId) {
-    // 更新缓存中的选中状态
-    const sign = allSignsCache.find(s => String(s.id) === String(signId));
-    if (sign) sign._selected = false;
+    const signCard = document.querySelector(`.sign-card-selectable[data-sign-id="${signId}"]`);
+    const selectedIndicator = document.getElementById(`selected-indicator-${signId}`);
+    
+    if (signCard) {
+        signCard.classList.remove('selected');
+        selectedIndicator.style.display = 'none';
+    }
+    
     // 从预览中移除
     const previewItem = document.getElementById(`preview-sign-${signId}`);
-    if (previewItem) previewItem.remove();
-    // 刷新卡片
-    renderSignCards();
-    // 空状态
-    const previewContainer = document.getElementById('sign-preview-container');
-    if (previewContainer && previewContainer.children.length === 0) {
-        previewContainer.innerHTML = '<div id="preview-empty-hint" style="text-align:center;color:#6c757d;padding:60px 0;"><div style="font-size:1.2rem;margin-bottom:10px;">🖼️</div><div>暂无标志</div><div style="font-size:0.9rem;margin-top:5px;">从左侧标志库添加标志</div></div>';
+    if (previewItem) {
+        previewItem.remove();
     }
+    
+    // 如果没有已选标志，显示空状态
+    const previewContainer = document.getElementById('sign-preview-container');
+    if (previewContainer.children.length === 0) {
+        previewContainer.innerHTML = `
+            <div id="preview-empty-hint" style="text-align: center; color: #6c757d; padding: 60px 0;">
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">🖼️</div>
+                <div>暂无标志</div>
+                <div style="font-size: 0.9rem; margin-top: 5px;">从左侧标志库添加标志</div>
+            </div>
+        `;
+    }
+
     updateInstallationInfoVisibility();
 }
 
@@ -2660,66 +2736,61 @@ function removeSelectedSign(signId) {
 function updateInstallationInfoVisibility() {
     const previewContainer = document.getElementById('sign-preview-container');
     const installationInfoSection = document.getElementById('installation-info-section');
-    if (!previewContainer || !installationInfoSection) return;
-    const hasSelectedSigns = previewContainer.children.length > 0 && !previewContainer.querySelector('#preview-empty-hint');
+
+    const hasSelectedSigns = previewContainer.children.length > 0 &&
+                            !previewContainer.querySelector('#preview-empty-hint');
+    
     installationInfoSection.style.display = hasSelectedSigns ? 'block' : 'none';
 }
 
-// 渲染标志卡片（根据当前筛选条件）
-function renderSignCards() {
+// 当前筛选状态
+let currentTypeFilter = 'all';
+let currentSearchTerm = '';
+
+// 应用所有筛选条件
+function applySignFilters() {
+    const cards = document.querySelectorAll('.sign-card-selectable');
+    cards.forEach(card => {
+        const signType = card.getAttribute('data-sign-type');
+        const signName = (card.getAttribute('data-sign-name') || '').toLowerCase();
+        const typeMatch = currentTypeFilter === 'all' || signType === currentTypeFilter || (currentTypeFilter === 'notification' && signType === 'information');
+        const searchMatch = !currentSearchTerm || signName.includes(currentSearchTerm.toLowerCase());
+        card.style.display = (typeMatch && searchMatch) ? 'block' : 'none';
+    });
+    // 更新分组标题的显示
+    updateGroupHeaders();
+}
+
+function updateGroupHeaders() {
     const container = document.getElementById('sign-selector-container');
     if (!container) return;
-    const type = document.querySelector('.sign-type-filter.active')?.dataset?.type || 'all';
-    const keyword = (document.getElementById('modal-sign-search-input')?.value || '').toLowerCase();
-
-    const filtered = allSignsCache.filter(s => {
-        const typeMatch = type === 'all' || s.sign_type === type || (type === 'notification' && s.sign_type === 'information');
-        const nameMatch = !keyword || (s.sign_name || '').toLowerCase().includes(keyword);
-        return typeMatch && nameMatch;
-    });
-
-    if (filtered.length === 0) {
-        container.innerHTML = '<div class="message" style="padding:40px;text-align:center;color:#999;">没有匹配的标志</div>';
-        return;
-    }
-
-    const groups = {};
-    filtered.forEach(s => {
-        const t = s.sign_type;
-        if (!groups[t]) groups[t] = [];
-        groups[t].push(s);
-    });
-
-    const typeOrder = ['warning', 'prohibition', 'instruction', 'information'];
-    const typeNames = { warning: '🟡 警告标志', prohibition: '🔴 禁止标志', instruction: '🔵 指令标志', information: '🟢 信息标志' };
-    let html = '';
-    typeOrder.forEach(type => {
-        const signs = groups[type];
-        if (!signs || signs.length === 0) return;
-        html += `<div style="margin-bottom:15px;"><div style="font-weight:bold;margin-bottom:8px;color:#333;font-size:0.9rem;">${typeNames[type]}</div>`;
-        html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">';
-        signs.forEach(sign => {
-            const img = sign.image_url ? `<img src="${sign.image_url}" style="width:100%;height:80px;object-fit:contain;border-radius:6px;background:white;border:1px solid #e9ecef;">` : '<div style="width:100%;height:80px;display:flex;align-items:center;justify-content:center;background:#f8f9fa;border-radius:6px;border:1px solid #e9ecef;color:#999;font-size:0.8rem;">暂无图片</div>';
-            const nameAttr = (sign.sign_name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            const codeAttr = (sign.sign_code || '').replace(/'/g, '&#39;');
-            const imgAttr = (sign.image_url || '').replace(/'/g, '&#39;');
-            html += `<div class="sign-card-selectable${sign._selected ? ' selected' : ''}" data-sign-id="${sign.id}" onclick="toggleSignSelection(${sign.id},'${codeAttr}','${nameAttr}','${imgAttr}')"><div style="position:relative;">${img}<div id="selected-indicator-${sign.id}" style="position:absolute;top:5px;right:5px;background:rgba(255,255,255,0.9);border-radius:50%;width:24px;height:24px;align-items:center;justify-content:center;font-size:1rem;color:#28a745;display:${sign._selected?'flex':'none'};">✓</div></div><div style="font-size:0.7rem;margin-top:3px;color:#333;font-weight:bold;text-align:center;">${sign.sign_code||''}</div><div style="font-size:0.65rem;color:#666;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sign.sign_name||''}</div></div>`;
+    const groups = container.querySelectorAll('div[style] > div[style*="font-weight: bold"]');
+    // 遍历所有分组，如果该分组下所有卡片都隐藏则隐藏标题
+    const allGroups = container.querySelectorAll(':scope > div > div:first-child');
+    allGroups.forEach(header => {
+        const parentDiv = header.parentElement;
+        let hasVisible = false;
+        parentDiv.querySelectorAll('.sign-card-selectable').forEach(c => {
+            if (c.style.display !== 'none') hasVisible = true;
         });
-        html += '</div></div>';
+        parentDiv.style.display = hasVisible ? '' : 'none';
     });
-    container.innerHTML = html;
 }
 
-// 按类型筛选
+// 按类型筛选标志
 function filterSignsByType(type) {
-    document.querySelectorAll('.sign-type-filter').forEach(b => b.classList.remove('active'));
+    currentTypeFilter = type;
+    document.querySelectorAll('.sign-type-filter').forEach(btn => btn.classList.remove('active'));
     const btn = document.querySelector(`.sign-type-filter[data-type="${type}"]`);
     if (btn) btn.classList.add('active');
-    renderSignCards();
+    applySignFilters();
 }
 
-// 搜索（由 oninput 直接调用）
-function filterModalSignsBySearch() { renderSignCards(); }
+// 按名称搜索标志（模态框内的标志选择器）
+function filterModalSignsBySearch() {
+    currentSearchTerm = document.getElementById('modal-sign-search-input')?.value || '';
+    applySignFilters();
+}
 
 // 添加已选标志到场景（改进版）
 async function addSelectedSignsToScene() {
