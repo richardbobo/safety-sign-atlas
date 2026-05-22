@@ -1044,6 +1044,7 @@ function renderSceneTable(scenes) {
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;">'+imgs+'</td>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;white-space:nowrap;">'+
                 '<button onclick="viewScene('+s.id+')" style="background:#1a56db;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">详情</button> '+
+                '<button onclick="editScene('+s.id+')" style="background:#f59e0b;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">编辑</button> '+
                 '<button onclick="addSignsToScene('+s.id+',\''+(s.scene_name||'').replace(/'/g,"\\'")+'\',\''+s.scene_code+'\')" style="background:#059669;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">+标志</button>'+
             '</td></tr>';
     });
