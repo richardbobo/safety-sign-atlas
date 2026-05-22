@@ -2528,6 +2528,14 @@ function addSignsToScene(sceneId, sceneName, sceneCode) {
     modal.dataset.sceneId = sceneId;
     document.getElementById('add-signs-scene-name').textContent = sceneName || '';
     document.getElementById('add-signs-scene-code').textContent = sceneCode || '';
+    // 重置筛选状态
+    currentTypeFilter = 'all';
+    currentSearchTerm = '';
+    const searchInput = document.getElementById('sign-search-input');
+    if (searchInput) searchInput.value = '';
+    document.querySelectorAll('.sign-type-filter').forEach(b => b.classList.remove('active'));
+    const allBtn = document.querySelector('.sign-type-filter[data-type="all"]');
+    if (allBtn) allBtn.classList.add('active');
     modal.classList.add('active');
     loadSignsForSelection();
 }
@@ -2777,8 +2785,8 @@ function filterSignsByType(type) {
     applySignFilters();
 }
 
-// 按名称搜索标志
-function filterSignsBySearch() {
+// 按名称搜索标志（模态框内的标志选择器）
+function filterModalSignsBySearch() {
     currentSearchTerm = document.getElementById('sign-search-input')?.value || '';
     applySignFilters();
 }
