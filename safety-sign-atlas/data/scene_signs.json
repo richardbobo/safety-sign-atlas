@@ -1,32 +1,5 @@
 [
   {
-    "id": 4,
-    "scene_id": 1,
-    "sign_id": 7,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T05:06:54.579Z"
-  },
-  {
-    "id": 5,
-    "scene_id": 1,
-    "sign_id": 71,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T05:06:54.603Z"
-  },
-  {
-    "id": 8,
-    "scene_id": 1,
-    "sign_id": 166,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T05:23:02.654Z"
-  },
-  {
     "id": 24,
     "scene_id": 3,
     "sign_id": 131,
