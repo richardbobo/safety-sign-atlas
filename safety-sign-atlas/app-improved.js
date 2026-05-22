@@ -1852,41 +1852,13 @@ function showSceneDetailModal(scene) {
                         </div>
                     </div>
                     
-                    ${scene.signs && scene.signs.length > 0 ? 
-                        `<div id="sceneSignsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                    ${scene.signs && scene.signs.length > 0 ?
+                        `<div id="sceneSignsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
                             ${sortSignsByType(scene.signs).map((sign, index) => `
-                                <div class="sign-card" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; background: white; position: relative;">
-                                    <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 5px;">
-                                        <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">序号: ${index + 1}</span>
-                                        <button onclick="event.stopPropagation();removeSignFromScene(${sign.id},${scene.id})" title="从场景移除" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
-                                    </div>
-                                    <div style="text-align: center; margin-bottom: 10px;">
-                                        <img src="${getFullImageUrl(sign.image_url)}" alt="${sign.sign_name}" 
-                                             style="width: 100%; max-height: 120px; object-fit: contain; background: #f8f9fa; border-radius: 5px; padding: 5px;" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGRkZGRkYiLz48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj7lm77niYfliLDlpLQ8L3RleHQ+PC9zdmc+'">
-                                    </div>
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>标志编码：</strong>${sign.sign_code}
-                                    </div>
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>标志名称：</strong>${sign.sign_name}
-                                    </div>
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>标志类型：</strong>
-                                        <span class="sign-type ${sign.sign_type}" style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 5px;">
-                                            ${getSignTypeChinese(sign.sign_type)}
-                                        </span>
-                                    </div>
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>安装高度：</strong>${sign.installation_height || '未设置'} 米
-                                    </div>
-                                    <div style="margin-bottom: 5px;">
-                                        <strong>观察距离：</strong>${sign.observation_distance || '未设置'} 米
-                                    </div>
-                                    ${sign.special_requirements ? 
-                                        `<div style="margin-bottom: 5px;">
-                                            <strong>特殊要求：</strong>${sign.special_requirements}
-                                        </div>` : ''
-                                    }
+                                <div class="sign-card" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px; background: white; position: relative; text-align: center;">
+                                    <button onclick="event.stopPropagation();removeSignFromScene(${sign.id},${scene.id})" title="从场景移除" style="position:absolute;top:4px;right:4px;background:#dc3545;color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;z-index:1;display:flex;align-items:center;justify-content:center;">✕</button>
+                                    <img src="${getFullImageUrl(sign.image_url)}" alt="${sign.sign_name}"
+                                         style="width:100%;height:80px;object-fit:contain;background:#f8f9fa;border-radius:4px;" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGRkZGRkYiLz48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj7lm77niYfliLDlpLQ8L3RleHQ+PC9zdmc+';">
                                 </div>
                             `).join('')}
                         </div>` 
