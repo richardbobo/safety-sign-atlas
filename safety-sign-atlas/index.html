@@ -805,7 +805,13 @@
                 <!-- 左侧：标志库 -->
                 <div class="sign-library-section" style="border-right: 1px solid #e9ecef; padding-right: 20px;">
                     <h4 style="color: #333; margin-bottom: 15px;">标志库</h4>
-                    
+
+                    <!-- 搜索框 -->
+                    <div style="margin-bottom: 10px;">
+                        <input type="text" id="sign-search-input" placeholder="🔍 搜索标志名称..." oninput="filterSignsBySearch()"
+                               style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;">
+                    </div>
+
                     <!-- 标志类型筛选 -->
                     <div style="margin-bottom: 15px;">
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -813,7 +819,7 @@
                             <button class="sign-type-filter" data-type="warning" onclick="filterSignsByType('warning')">🟡 警告</button>
                             <button class="sign-type-filter" data-type="prohibition" onclick="filterSignsByType('prohibition')">🔴 禁止</button>
                             <button class="sign-type-filter" data-type="instruction" onclick="filterSignsByType('instruction')">🔵 指令</button>
-                            <button class="sign-type-filter" data-type="notification" onclick="filterSignsByType('notification')">🟢 提示</button>
+                            <button class="sign-type-filter" data-type="information" onclick="filterSignsByType('information')">🟢 提示</button>
                         </div>
                     </div>
                     

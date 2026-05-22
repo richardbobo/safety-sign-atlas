@@ -2580,7 +2580,7 @@ async function loadSignsForSelection() {
                         : `<div style="width: 100%; height: 80px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; color: #999; font-size: 0.8rem;">暂无图片</div>`;
                     
                     html += `
-                        <div class="sign-card-selectable" data-sign-id="${sign.id}" onclick="toggleSignSelection(${sign.id}, '${sign.sign_code}', '${sign.sign_name.replace(/'/g, "\\'")}', '${imageUrl.replace(/'/g, "\\'")}')">
+                        <div class="sign-card-selectable" data-sign-id="${sign.id}" data-sign-type="${sign.sign_type}" data-sign-name="${sign.sign_name.replace(/"/g, '&quot;')}" onclick="toggleSignSelection(${sign.id}, '${sign.sign_code}', '${sign.sign_name.replace(/'/g, "\\'")}', '${imageUrl.replace(/'/g, "\\'")}')">
                             <div style="position: relative;">
                                 ${imageHtml}
                                 <div style="position: absolute; top: 5px; right: 5px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #28a745; display: none;" id="selected-indicator-${sign.id}">
@@ -2734,25 +2734,53 @@ function updateInstallationInfoVisibility() {
     installationInfoSection.style.display = hasSelectedSigns ? 'block' : 'none';
 }
 
+// 当前筛选状态
+let currentTypeFilter = 'all';
+let currentSearchTerm = '';
+
+// 应用所有筛选条件
+function applySignFilters() {
+    const cards = document.querySelectorAll('.sign-card-selectable');
+    cards.forEach(card => {
+        const signType = card.getAttribute('data-sign-type');
+        const signName = (card.getAttribute('data-sign-name') || '').toLowerCase();
+        const typeMatch = currentTypeFilter === 'all' || signType === currentTypeFilter || (currentTypeFilter === 'notification' && signType === 'information');
+        const searchMatch = !currentSearchTerm || signName.includes(currentSearchTerm.toLowerCase());
+        card.style.display = (typeMatch && searchMatch) ? 'block' : 'none';
+    });
+    // 更新分组标题的显示
+    updateGroupHeaders();
+}
+
+function updateGroupHeaders() {
+    const container = document.getElementById('sign-selector-container');
+    if (!container) return;
+    const groups = container.querySelectorAll('div[style] > div[style*="font-weight: bold"]');
+    // 遍历所有分组，如果该分组下所有卡片都隐藏则隐藏标题
+    const allGroups = container.querySelectorAll(':scope > div > div:first-child');
+    allGroups.forEach(header => {
+        const parentDiv = header.parentElement;
+        let hasVisible = false;
+        parentDiv.querySelectorAll('.sign-card-selectable').forEach(c => {
+            if (c.style.display !== 'none') hasVisible = true;
+        });
+        parentDiv.style.display = hasVisible ? '' : 'none';
+    });
+}
+
 // 按类型筛选标志
 function filterSignsByType(type) {
-    // 更新按钮状态
-    document.querySelectorAll('.sign-type-filter').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelector(`.sign-type-filter[data-type="${type}"]`).classList.add('active');
-    
-    // 筛选标志
-    const signCards = document.querySelectorAll('.sign-card-selectable');
-    signCards.forEach(card => {
-        if (type === 'all') {
-            card.style.display = 'block';
-        } else {
-            // 这里需要根据标志类型来筛选，暂时先显示所有
-            // 实际应该根据标志类型来筛选
-            card.style.display = 'block';
-        }
-    });
+    currentTypeFilter = type;
+    document.querySelectorAll('.sign-type-filter').forEach(btn => btn.classList.remove('active'));
+    const btn = document.querySelector(`.sign-type-filter[data-type="${type}"]`);
+    if (btn) btn.classList.add('active');
+    applySignFilters();
+}
+
+// 按名称搜索标志
+function filterSignsBySearch() {
+    currentSearchTerm = document.getElementById('sign-search-input')?.value || '';
+    applySignFilters();
 }
 
 // 添加已选标志到场景（改进版）
