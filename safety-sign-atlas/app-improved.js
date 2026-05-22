@@ -2153,58 +2153,55 @@ async function exportSceneToPDF(sceneId) {
 
 // 创建PDF内容HTML
 function createPDFContent(scene) {
-    const now = new Date();
-    const formattedTime = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    var now = new Date();
+    var timeStr = now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    var signs = sortSignsByType(scene.signs);
+    var signCount = signs.length;
+    var cols = signCount <= 4 ? 2 : signCount <= 8 ? 3 : 4;
+    var imgW = 794 / cols - 16;
 
-    const sortedSigns = sortSignsByType(scene.signs);
-    // 根据标志数量动态计算每行个数
-    const colsPerRow = sortedSigns.length <= 4 ? sortedSigns.length : sortedSigns.length <= 8 ? 4 : 5;
-    const imgSize = sortedSigns.length <= 4 ? 160 : sortedSigns.length <= 8 ? 120 : 100;
+    // Build hazard tags HTML
+    var tagsHtml = '无';
+    if (scene.hazard_tags) {
+        var tagParts = scene.hazard_tags.split(',').filter(function(t){return t.trim();}).map(function(tag){
+            var t = tag.trim();
+            var n = getHazardTagName(t);
+            var c = getHazardTagColor(t);
+            return '<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:1px 6px;border-radius:10px;font-size:10px;margin:1px 2px;">'+n+'</span>';
+        });
+        tagsHtml = tagParts.join('');
+    }
 
-    return `
-        <div style="font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;color:#333;line-height:1.3;font-size:13px;">
-            <!-- 标题行 -->
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:2px solid #3498db;padding-bottom:6px;">
-                <div>
-                    <h1 style="color:#2c3e50;margin:0;font-size:20px;">安全标志张贴指导文件</h1>
-                    <div style="color:#7f8c8d;font-size:11px;margin-top:2px;">${formattedTime}</div>
-                </div>
-                <div style="text-align:right;font-size:12px;">
-                    <div><b>${scene.scene_name}</b></div>
-                    <div style="color:#666;">${scene.scene_code} | ${scene.department}</div>
-                    <div style="color:#666;">${scene.location_description||''}</div>
-                    <div style="margin-top:2px;">${scene.hazard_tags ? scene.hazard_tags.split(',').filter(t=>t.trim()).map(tag => {
-                        const name = getHazardTagName(tag.trim());
-                        const color = getHazardTagColor(tag.trim());
-                        return '<span style="display:inline-block;background:'+color+'20;color:'+color+';border:1px solid '+color+';padding:1px 6px;border-radius:10px;font-size:10px;margin:1px 2px;">'+name+'</span>';
-                    }).join('') : '无'}</div>
-                </div>
-            </div>
+    // Build table rows
+    var tableHtml = '';
+    var idx = 0;
+    while (idx < signs.length) {
+        tableHtml += '<tr>';
+        for (var c = 0; c < cols && idx < signs.length; c++) {
+            var sign = signs[idx];
+            var imgUrl = getFullImageUrl(sign.image_url);
+            tableHtml += '<td style="width:'+imgW+'px;height:'+imgW+'px;text-align:center;vertical-align:middle;padding:4px;border:1px solid #eee;">';
+            tableHtml += '<img src="'+imgUrl+'" width="'+(imgW-8)+'" height="'+(imgW-8)+'" style="object-fit:contain;" onerror="this.style.display=\'none\';">';
+            tableHtml += '</td>';
+            idx++;
+        }
+        tableHtml += '</tr>';
+    }
 
-            ${scene.scene_image_url ? `
-            <div style="text-align:center;margin-bottom:10px;">
-                <img src="${getFullImageUrl(scene.scene_image_url)}" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;" alt="场景图片">
-            </div>` : ''}
-
-            <!-- 安全标志图片网格 -->
-            <div style="display:grid;grid-template-columns:repeat(${colsPerRow},1fr);gap:6px;margin-bottom:10px;">
-                ${sortedSigns.map((sign) => {
-                    const imgUrl = getFullImageUrl(sign.image_url);
-                    return '<div style="text-align:center;"><img src="'+imgUrl+'" style="width:100%;height:'+imgSize+'px;object-fit:contain;border-radius:4px;background:#f8f9fa;border:1px solid #eee;" onerror="this.onerror=null;this.style.display=\'none\';"></div>';
-                }).join('')}
-            </div>
-
-            <!-- 注意事项（紧凑） -->
-            <div style="font-size:10px;color:#666;border-top:1px solid #ecf0f1;padding-top:6px;">
-                <b>注意事项：</b>按照警告→禁止→指令→信息顺序张贴 | 安装高度1.2-1.8米 | 保持标志清洁、无遮挡 | 定期检查完整性和清晰度 | PPE标志设在更衣室等位置
-            </div>
-
-            <!-- 页脚 -->
-            <div style="text-align:center;color:#95a5a6;font-size:10px;margin-top:8px;padding-top:6px;border-top:1px solid #ecf0f1;">
-                安全标志图集管理系统 | 生成于 ${formattedTime}
-            </div>
-        </div>
-    `;
+    return '<div style="font-family:\'Microsoft YaHei\',\'SimHei\',Arial,sans-serif;color:#333;font-size:12px;width:794px;">'+
+        '<div style="border-bottom:2px solid #3498db;padding-bottom:8px;margin-bottom:10px;">'+
+            '<h1 style="color:#2c3e50;margin:0 0 4px 0;font-size:18px;">安全标志张贴指导文件</h1>'+
+            '<table style="width:100%;border:none;"><tr>'+
+                '<td style="font-size:11px;color:#7f8c8d;">'+timeStr+'</td>'+
+                '<td style="text-align:right;font-size:11px;"><b>'+scene.scene_name+'</b> &nbsp; '+scene.scene_code+' &nbsp; '+scene.department+'</td>'+
+            '</tr></table>'+
+            (scene.location_description ? '<div style="font-size:10px;color:#666;">位置: '+scene.location_description+'</div>' : '')+
+            '<div style="margin-top:4px;">'+tagsHtml+'</div>'+
+        '</div>'+
+        (scene.scene_image_url ? '<div style="text-align:center;margin-bottom:8px;"><img src="'+getFullImageUrl(scene.scene_image_url)+'" style="max-width:100%;max-height:120px;object-fit:contain;"></div>' : '')+
+        '<table style="width:100%;border-collapse:collapse;margin-bottom:8px;">'+tableHtml+'</table>'+
+        '<div style="font-size:9px;color:#999;border-top:1px solid #eee;padding-top:6px;text-align:center;">安全标志图集管理系统 | '+timeStr+'</div>'+
+    '</div>';
 }
 
 // 编辑场景
