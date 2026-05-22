@@ -951,7 +951,7 @@ async function loadScenes() {
                         <div class="scene-actions">
                             <button class="action-btn btn-view" onclick="viewNewLayout(${scene.id})" title="查看场景详情">👁️ 查看详情</button>
                             <button class="action-btn btn-edit" onclick="editScene(${scene.id})" title="编辑场景">✏️ 编辑</button>
-                            <button class="action-btn btn-add-sign" onclick="addSignsToScene(${scene.id})" title="添加标志">➕ 标志</button>
+                            <button class="action-btn btn-add-sign" onclick="addSignsToScene(${scene.id}, '${scene.scene_name.replace(/'/g, "\\'")}', '${scene.scene_code}')" title="添加标志">➕ 标志</button>
                             <button class="action-btn btn-delete-scene" onclick="confirmDeleteScene(${scene.id}, '${scene.scene_code}', '${scene.scene_name.replace(/'/g, "\\'")}')" title="删除场景">🗑️ 删除</button>
                         </div>
                     </div>
@@ -2515,10 +2515,15 @@ async function deleteScene() {
     }
 }
 
-// 为场景添加标志（跳转到全窗口页面）
-function addSignsToScene(sceneId) {
-    // 跳转到三栏布局添加标志页面
-    window.location.href = `add-signs-three-column.html?sceneId=${sceneId}`;
+// 为场景添加标志（打开内置模态框）
+function addSignsToScene(sceneId, sceneName, sceneCode) {
+    const modal = document.getElementById('add-signs-modal');
+    if (!modal) return;
+    modal.dataset.sceneId = sceneId;
+    document.getElementById('add-signs-scene-name').textContent = sceneName || '';
+    document.getElementById('add-signs-scene-code').textContent = sceneCode || '';
+    modal.classList.add('active');
+    loadSignsForSelection();
 }
 
 // 加载标志选择器（改进版，显示图片）
