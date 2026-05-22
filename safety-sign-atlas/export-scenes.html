@@ -39,37 +39,6 @@ var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c
 
 function loadCustomTags(){return fetch(API+'/custom-hazard-tags').then(function(r){return r.json();}).catch(function(){return[];});}
 
-// 图片URL转base64（使用Image+Canvas，兼容本地文件）
-var base64Cache = {};
-function urlToBase64(url) {
-    if (base64Cache[url]) return Promise.resolve(base64Cache[url]);
-    // 确保使用绝对URL
-    var absUrl = url;
-    if (url.indexOf('://') === -1) {
-        absUrl = (url.charAt(0) === '/' ? '' : '/') + url;
-    }
-    return new Promise(function(resolve) {
-        var img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = function() {
-            try {
-                var canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                var ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                var dataUrl = canvas.toDataURL('image/png');
-                base64Cache[url] = dataUrl;
-                resolve(dataUrl);
-            } catch(e) {
-                resolve('');
-            }
-        };
-        img.onerror = function() { resolve(''); };
-        img.src = absUrl;
-    });
-}
-
 Promise.all([fetch(API+'/scenes').then(function(r){return r.json();}), loadCustomTags()]).then(function(results){
     var scenes=results[0];
     var customTags=results[1];
@@ -79,43 +48,33 @@ Promise.all([fetch(API+'/scenes').then(function(r){return r.json();}), loadCusto
     var now=new Date();
     document.getElementById('subtitle').textContent='导出时间: '+now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+' | 共 '+scenes.length+' 个场景';
 
-    // 收集所有需要转base64的图片URL
-    var imgUrls = [];
-    scenes.forEach(function(s){(s.signs||[]).forEach(function(sg){if(sg.image_url) imgUrls.push(sg.image_url);});});
-    var uniqueUrls = imgUrls.filter(function(u,i){return imgUrls.indexOf(u)===i;});
-
-    // 预先转换所有图片为base64
-    Promise.all(uniqueUrls.map(urlToBase64)).then(function(){
-        var html='';
-        scenes.forEach(function(s,i){
-            var signs=s.signs||[];
-            var tags='';
-            if(s.hazard_tags){
-                tags=s.hazard_tags.split(',').filter(function(t){return t.trim();}).map(function(t){
-                    var tid=t.trim();
-                    var n=tm[tid]||tagMap[tid]||(tid.startsWith('custom_')?'已删除':tid);
-                    var c=tc[tid]||'#667eea';
-                    return '<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span>';
-                }).join('');
-            }
-            var thumbs='';
-            if(signs.length>0){
-                signs.forEach(function(sg){
-                    var src = sg.image_url ? (base64Cache[sg.image_url] || sg.image_url) : '';
-                    if(src){
-                        thumbs+='<img src="'+src+'" width="48" height="48" style="object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;" alt="'+sg.sign_name+'">';
-                    }else{
-                        thumbs+='<div class=no-img>无图</div>';
-                    }
-                });
-            }else{
-                thumbs='<span style=color:#9ca3af;font-size:11px;>无</span>';
-            }
-            html+='<tr><td>'+(i+1)+'</td><td>'+s.scene_code+'</td><td><b>'+s.scene_name+'</b></td><td>'+s.department+'</td><td>'+(s.location_description||'')+'</td><td>'+(tags||'<span style=color:#9ca3af;>无</span>')+'</td><td style=text-align:center;>'+(signs.length||0)+'</td><td><div class=sign-thumbs>'+thumbs+'</div></td></tr>';
-        });
-        document.getElementById('tbody').innerHTML=html;
-        document.getElementById('downloadBtn').disabled = false;
+    var html='';
+    scenes.forEach(function(s,i){
+        var signs=s.signs||[];
+        var tags='';
+        if(s.hazard_tags){
+            tags=s.hazard_tags.split(',').filter(function(t){return t.trim();}).map(function(t){
+                var tid=t.trim();
+                var n=tm[tid]||tagMap[tid]||(tid.startsWith('custom_')?'已删除':tid);
+                var c=tc[tid]||'#667eea';
+                return '<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span>';
+            }).join('');
+        }
+        var thumbs='';
+        if(signs.length>0){
+            signs.forEach(function(sg){
+                if(sg.image_url){
+                    thumbs+='<img src="'+sg.image_url+'" width="48" height="48" style="object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;" alt="'+sg.sign_name+'" loading="lazy">';
+                }else{
+                    thumbs+='<div class=no-img>无图</div>';
+                }
+            });
+        }else{
+            thumbs='<span style=color:#9ca3af;font-size:11px;>无</span>';
+        }
+        html+='<tr><td>'+(i+1)+'</td><td>'+s.scene_code+'</td><td><b>'+s.scene_name+'</b></td><td>'+s.department+'</td><td>'+(s.location_description||'')+'</td><td>'+(tags||'<span style=color:#9ca3af;>无</span>')+'</td><td style=text-align:center;>'+(signs.length||0)+'</td><td><div class=sign-thumbs>'+thumbs+'</div></td></tr>';
     });
+    document.getElementById('tbody').innerHTML=html;
 }).catch(function(e){document.body.innerHTML='<h3 style=color:#dc3545;>加载失败: '+e.message+'</h3>';});
 
 function downloadExcel() {
