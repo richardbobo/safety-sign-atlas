@@ -1,32 +1,5 @@
 [
   {
-    "id": 1,
-    "scene_id": 1,
-    "sign_id": 5,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T03:16:02.652Z"
-  },
-  {
-    "id": 2,
-    "scene_id": 1,
-    "sign_id": 5,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T03:21:10.767Z"
-  },
-  {
-    "id": 3,
-    "scene_id": 1,
-    "sign_id": 5,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T04:19:10.139Z"
-  },
-  {
     "id": 4,
     "scene_id": 1,
     "sign_id": 7,
@@ -45,24 +18,6 @@
     "added_at": "2026-05-14T05:06:54.603Z"
   },
   {
-    "id": 6,
-    "scene_id": 1,
-    "sign_id": 115,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T05:06:54.608Z"
-  },
-  {
-    "id": 7,
-    "scene_id": 1,
-    "sign_id": 120,
-    "installation_height": 1.5,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-14T05:14:36.163Z"
-  },
-  {
     "id": 8,
     "scene_id": 1,
     "sign_id": 166,
@@ -70,141 +25,6 @@
     "observation_distance": 3,
     "special_requirements": "",
     "added_at": "2026-05-14T05:23:02.654Z"
-  },
-  {
-    "id": 9,
-    "scene_id": 2,
-    "sign_id": 23,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:26.932Z"
-  },
-  {
-    "id": 10,
-    "scene_id": 2,
-    "sign_id": 131,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.171Z"
-  },
-  {
-    "id": 11,
-    "scene_id": 2,
-    "sign_id": 131,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.174Z"
-  },
-  {
-    "id": 12,
-    "scene_id": 2,
-    "sign_id": 172,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.175Z"
-  },
-  {
-    "id": 13,
-    "scene_id": 2,
-    "sign_id": 23,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.176Z"
-  },
-  {
-    "id": 14,
-    "scene_id": 2,
-    "sign_id": 161,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.177Z"
-  },
-  {
-    "id": 15,
-    "scene_id": 2,
-    "sign_id": 24,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.177Z"
-  },
-  {
-    "id": 16,
-    "scene_id": 2,
-    "sign_id": 172,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.178Z"
-  },
-  {
-    "id": 17,
-    "scene_id": 2,
-    "sign_id": 166,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.179Z"
-  },
-  {
-    "id": 18,
-    "scene_id": 2,
-    "sign_id": 173,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.180Z"
-  },
-  {
-    "id": 19,
-    "scene_id": 2,
-    "sign_id": 166,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.181Z"
-  },
-  {
-    "id": 20,
-    "scene_id": 2,
-    "sign_id": 24,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.182Z"
-  },
-  {
-    "id": 21,
-    "scene_id": 2,
-    "sign_id": 161,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.183Z"
-  },
-  {
-    "id": 22,
-    "scene_id": 2,
-    "sign_id": 173,
-    "installation_height": 1.6,
-    "observation_distance": 3,
-    "special_requirements": "从上到下、从左到右，黄红蓝绿顺序张贴",
-    "added_at": "2026-05-20T06:28:27.183Z"
-  },
-  {
-    "id": 23,
-    "scene_id": 2,
-    "sign_id": 8,
-    "installation_height": 1.7,
-    "observation_distance": 3,
-    "special_requirements": "",
-    "added_at": "2026-05-20T06:33:23.485Z"
   },
   {
     "id": 24,

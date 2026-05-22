@@ -193,7 +193,7 @@
   },
   {
     "id": 18,
-    "scene_code": "SCENE-802",
+    "scene_code": "SCENE-963",
     "scene_name": "PVC细密封作业",
     "department": "生产",
     "hazard_tags": "mechanical,slippery,custom_1779347330512,custom_1779348208963,custom_1779348674637",
@@ -217,7 +217,7 @@
   },
   {
     "id": 20,
-    "scene_code": "SCENE-402",
+    "scene_code": "SCENE-675",
     "scene_name": "擦蜡作业",
     "department": "生产",
     "hazard_tags": "mechanical,slippery,custom_1779347330512",
