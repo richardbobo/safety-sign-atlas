@@ -1782,7 +1782,12 @@ function showSceneDetailModal(scene) {
                                 <strong>所属部门：</strong>${scene.department}
                             </div>
                             <div style="margin-bottom: 10px;">
-                                <strong>危险源标签：</strong>${scene.hazard_tags || '无'}
+                                <strong>危险源标签：</strong>
+                                ${scene.hazard_tags ? scene.hazard_tags.split(',').filter(t=>t.trim()).map(tag => {
+                                    const name = getHazardTagName(tag.trim());
+                                    const color = getHazardTagColor(tag.trim());
+                                    return `<span style="display:inline-block;background:${color}20;color:${color};border:1px solid ${color};padding:2px 8px;border-radius:12px;font-size:0.8rem;margin:2px 4px;">${name}</span>`;
+                                }).join('') : '无'}
                             </div>
                             <div style="margin-bottom: 10px;">
                                 <strong>位置描述：</strong>${scene.location_description || '未填写'}
