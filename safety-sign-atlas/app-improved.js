@@ -2647,9 +2647,9 @@ function toggleSignSelection(signId, signCode, signName, imageUrl) {
         signCard.classList.add('selected');
         selectedIndicator.style.display = 'flex';
         
-        // 添加到预览
-        const emptyMessage = previewContainer.querySelector('div[style*="text-align: center"]');
-        if (emptyMessage) {
+        // 清除空状态提示（用特定选择器避免误删已选标志预览）
+        const emptyHint = previewContainer.querySelector('#preview-empty-hint');
+        if (emptyHint) {
             previewContainer.innerHTML = '';
         }
         
@@ -2706,14 +2706,14 @@ function removeSelectedSign(signId) {
     const previewContainer = document.getElementById('sign-preview-container');
     if (previewContainer.children.length === 0) {
         previewContainer.innerHTML = `
-            <div style="text-align: center; color: #6c757d; padding: 60px 0;">
+            <div id="preview-empty-hint" style="text-align: center; color: #6c757d; padding: 60px 0;">
                 <div style="font-size: 1.2rem; margin-bottom: 10px;">🖼️</div>
                 <div>暂无标志</div>
                 <div style="font-size: 0.9rem; margin-top: 5px;">从左侧标志库添加标志</div>
             </div>
         `;
     }
-    
+
     updateInstallationInfoVisibility();
 }
 
@@ -2721,9 +2721,9 @@ function removeSelectedSign(signId) {
 function updateInstallationInfoVisibility() {
     const previewContainer = document.getElementById('sign-preview-container');
     const installationInfoSection = document.getElementById('installation-info-section');
-    
-    const hasSelectedSigns = previewContainer.children.length > 0 && 
-                            !previewContainer.querySelector('div[style*="text-align: center"]');
+
+    const hasSelectedSigns = previewContainer.children.length > 0 &&
+                            !previewContainer.querySelector('#preview-empty-hint');
     
     installationInfoSection.style.display = hasSelectedSigns ? 'block' : 'none';
 }
@@ -2821,11 +2821,19 @@ async function addSelectedSignsToScene() {
 function cancelAddSigns() {
     document.getElementById('add-signs-modal').classList.remove('active');
     document.getElementById('add-signs-message').innerHTML = '';
-    
-    // 重置表单
+
+    // 重置安装信息表单
     document.getElementById('installation-height').value = '';
     document.getElementById('observation-distance').value = '';
     document.getElementById('special-requirements').value = '';
+
+    // 清除已选标志和预览
+    document.querySelectorAll('.sign-card-selectable.selected').forEach(card => {
+        card.classList.remove('selected');
+    });
+    const previewContainer = document.getElementById('sign-preview-container');
+    if (previewContainer) previewContainer.innerHTML = '';
+    document.getElementById('installation-info-section').style.display = 'none';
 }
 
 // 页面加载时初始化
