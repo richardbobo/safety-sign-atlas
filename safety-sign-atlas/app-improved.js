@@ -2224,7 +2224,11 @@ function createPDFContent(scene) {
                     </tr>
                     <tr>
                         <td style="padding: 8px 0; font-weight: bold;">危险源标签:</td>
-                        <td style="padding: 8px 0;">${scene.hazard_tags || '无'}</td>
+                        <td style="padding: 8px 0;">${scene.hazard_tags ? scene.hazard_tags.split(',').filter(t=>t.trim()).map(tag => {
+                            const name = getHazardTagName(tag.trim());
+                            const color = getHazardTagColor(tag.trim());
+                            return `<span style="display:inline-block;background:${color}20;color:${color};border:1px solid ${color};padding:2px 8px;border-radius:12px;font-size:12px;margin:2px 4px;">${name}</span>`;
+                        }).join('') : '无'}</td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 0; font-weight: bold;">安装备注:</td>
@@ -2236,48 +2240,29 @@ function createPDFContent(scene) {
             <!-- 安全标志列表 -->
             <div style="margin-bottom: 30px;">
                 <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">安全标志列表 (共${scene.signs.length}个)</h2>
-                
-                <table style="width: 100%; border-collapse: collapse; border: 1px solid #e0e0e0;">
-                    <thead>
-                        <tr style="background: #ecf0f1;">
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7;">序号</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7;">标志编码</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7;">标志名称</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7;">类型</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7;">安装高度</th>
-                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7;">观察距离</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${sortSignsByType(scene.signs).map((sign, index) => `
-                            <tr style="${index % 2 === 0 ? 'background: #f8f9fa;' : ''}">
-                                <td style="padding: 10px; border-bottom: 1px solid #e0e0e0;">${index + 1}</td>
-                                <td style="padding: 10px; border-bottom: 1px solid #e0e0e0;">${sign.sign_code}</td>
-                                <td style="padding: 10px; border-bottom: 1px solid #e0e0e0;">${sign.sign_name}</td>
-                                <td style="padding: 10px; border-bottom: 1px solid #e0e0e0;">
-                                    <span style="display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; 
-                                        ${sign.sign_type === 'warning' ? 'background: #fef3c7; color: #92400e;' : ''}
-                                        ${sign.sign_type === 'prohibition' ? 'background: #fee2e2; color: #991b1b;' : ''}
-                                        ${sign.sign_type === 'instruction' ? 'background: #dbeafe; color: #1e40af;' : ''}
-                                        ${sign.sign_type === 'information' ? 'background: #d1fae5; color: #065f46;' : ''}">
-                                        ${getSignTypeChinese(sign.sign_type)}
-                                    </span>
-                                </td>
-                                <td style="padding: 10px; border-bottom: 1px solid #e0e0e0;">${sign.installation_height || '1.5'}米</td>
-                                <td style="padding: 10px; border-bottom: 1px solid #e0e0e0;">${sign.observation_distance || '3'}米</td>
-                            </tr>
-                            ${sign.special_requirements ? `
-                                <tr style="${index % 2 === 0 ? 'background: #f8f9fa;' : ''}">
-                                    <td colspan="6" style="padding: 8px 10px; border-bottom: 1px solid #e0e0e0; font-size: 13px; color: #666;">
-                                        <strong>特殊要求:</strong> ${sign.special_requirements}
-                                    </td>
-                                </tr>
-                            ` : ''}
-                        `).join('')}
-                    </tbody>
-                </table>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    ${sortSignsByType(scene.signs).map((sign, index) => {
+                        const imgUrl = getFullImageUrl(sign.image_url);
+                        const typeColor = sign.sign_type === 'warning' ? '#f59e0b' : sign.sign_type === 'prohibition' ? '#ef4444' : sign.sign_type === 'instruction' ? '#3b82f6' : '#10b981';
+                        return `
+                        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; display: flex; gap: 10px; align-items: center; background: #fff;">
+                            <div style="font-weight: bold; color: #999; min-width: 20px; text-align: center;">${index + 1}</div>
+                            <img src="${imgUrl}" style="width: 60px; height: 60px; object-fit: contain; border-radius: 4px; background: #f8f9fa; border: 1px solid #eee;" onerror="this.onerror=null;this.style.display='none';">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight: bold; font-size: 13px;">${sign.sign_name}</div>
+                                <div style="font-size: 11px; color: #666;">${sign.sign_code}</div>
+                                <div style="margin-top: 4px;">
+                                    <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;background:${typeColor}20;color:${typeColor};">${getSignTypeChinese(sign.sign_type)}</span>
+                                    <span style="font-size:11px;color:#666;margin-left:8px;">安装:${sign.installation_height||'1.5'}m 距离:${sign.observation_distance||'3'}m</span>
+                                </div>
+                                ${sign.special_requirements ? `<div style="font-size:10px;color:#999;margin-top:2px;">备注:${sign.special_requirements}</div>` : ''}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
             </div>
-            
+
             <!-- 张贴指导 -->
             <div style="margin-bottom: 30px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: #f0f9ff; border-left: 4px solid #3498db;">
                 <h2 style="color: #2c3e50; margin-bottom: 15px; font-size: 18px;">现场张贴指导</h2>
