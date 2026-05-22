@@ -1015,6 +1015,31 @@ function switchSceneView(mode) {
     else renderSceneTable(cachedScenesData);
 }
 
+function filterScenes() {
+    var kw = (document.getElementById('scene-search-input')?.value || '').toLowerCase();
+    var cards = document.querySelectorAll('.scene-card');
+    // 卡片视图：切换 display
+    cards.forEach(function(card) {
+        var txt = (card.textContent || '').toLowerCase();
+        if (!kw || txt.includes(kw)) card.style.display = '';
+        else card.style.display = 'none';
+    });
+    // 列表视图：重新渲染表格
+    if (currentSceneView === 'list' && cachedScenesData.length > 0) {
+        if (kw) {
+            var f = cachedScenesData.filter(function(s) {
+                return (s.scene_name||'').toLowerCase().includes(kw) ||
+                       (s.scene_code||'').toLowerCase().includes(kw) ||
+                       (s.department||'').toLowerCase().includes(kw) ||
+                       (s.location_description||'').toLowerCase().includes(kw);
+            });
+            renderSceneTable(f);
+        } else {
+            renderSceneTable(cachedScenesData);
+        }
+    }
+}
+
 function renderSceneTable(scenes) {
     var c = document.getElementById('scenes-container');
     if (!scenes.length) { c.innerHTML = '<div class="message">暂无场景数据</div>'; return; }
