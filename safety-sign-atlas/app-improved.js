@@ -2616,6 +2616,8 @@ async function loadSignsForSelection() {
         console.error('加载标志列表失败:', error);
         container.innerHTML = `<div class="message error">加载失败: ${error.message}</div>`;
     }
+    // 确保搜索框事件已绑定
+    setTimeout(initSignSearchEvents, 100);
 }
 
 // 获取标志颜色类
@@ -2748,32 +2750,24 @@ let currentSearchTerm = '';
 
 // 应用所有筛选条件
 function applySignFilters() {
-    const cards = document.querySelectorAll('.sign-card-selectable');
-    cards.forEach(card => {
-        const signType = card.getAttribute('data-sign-type');
-        const signName = (card.getAttribute('data-sign-name') || '').toLowerCase();
-        const typeMatch = currentTypeFilter === 'all' || signType === currentTypeFilter || (currentTypeFilter === 'notification' && signType === 'information');
-        const searchMatch = !currentSearchTerm || signName.includes(currentSearchTerm.toLowerCase());
-        card.style.display = (typeMatch && searchMatch) ? 'block' : 'none';
-    });
-    // 更新分组标题的显示
-    updateGroupHeaders();
-}
-
-function updateGroupHeaders() {
-    const container = document.getElementById('sign-selector-container');
-    if (!container) return;
-    const groups = container.querySelectorAll('div[style] > div[style*="font-weight: bold"]');
-    // 遍历所有分组，如果该分组下所有卡片都隐藏则隐藏标题
-    const allGroups = container.querySelectorAll(':scope > div > div:first-child');
-    allGroups.forEach(header => {
-        const parentDiv = header.parentElement;
-        let hasVisible = false;
-        parentDiv.querySelectorAll('.sign-card-selectable').forEach(c => {
-            if (c.style.display !== 'none') hasVisible = true;
+    try {
+        const cards = document.querySelectorAll('.sign-card-selectable');
+        cards.forEach(card => {
+            const signType = card.getAttribute('data-sign-type') || '';
+            const signName = (card.getAttribute('data-sign-name') || '').toLowerCase();
+            const typeMatch = currentTypeFilter === 'all' || signType === currentTypeFilter || (currentTypeFilter === 'notification' && signType === 'information');
+            const searchMatch = !currentSearchTerm || signName.includes(currentSearchTerm.toLowerCase());
+            card.style.display = (typeMatch && searchMatch) ? 'block' : 'none';
         });
-        parentDiv.style.display = hasVisible ? '' : 'none';
-    });
+        // 更新分组标题的显示
+        document.querySelectorAll('#sign-selector-container > div').forEach(group => {
+            const cards = group.querySelectorAll('.sign-card-selectable');
+            if (cards.length > 0) {
+                const anyVisible = Array.from(cards).some(c => c.style.display !== 'none');
+                group.style.display = anyVisible ? '' : 'none';
+            }
+        });
+    } catch(e) { console.error('applySignFilters error:', e); }
 }
 
 // 按类型筛选标志
@@ -2789,6 +2783,15 @@ function filterSignsByType(type) {
 function filterModalSignsBySearch() {
     currentSearchTerm = document.getElementById('sign-search-input')?.value || '';
     applySignFilters();
+}
+
+// 初始化搜索框事件（在loadSignsForSelection之后绑定）
+function initSignSearchEvents() {
+    const input = document.getElementById('sign-search-input');
+    if (input && !input._filterBound) {
+        input._filterBound = true;
+        input.addEventListener('input', filterModalSignsBySearch);
+    }
 }
 
 // 添加已选标志到场景（改进版）
