@@ -57,17 +57,18 @@ http://localhost:3000
 
 ```
 safety-sign-atlas/
-├── index.html              # 主页面
-├── app-improved.js         # 主JavaScript文件
-├── server-optimized.js     # 服务器文件
-├── database.js            # 数据库操作
-├── style.css              # 样式文件
-├── package.json           # 项目配置
-├── components/            # 组件目录
-├── add-signs-three-column.html  # 添加标志页面
-├── new-scene-detail-simple.html # 场景详情页面
-├── uploads/               # 上传文件目录
-└── README.md              # 项目说明
+├── index.html              # 主页面（单页应用）
+├── app-improved.js         # 主前端逻辑
+├── server-optimized.js     # 后端服务（Express + SQLite）
+├── style.css               # 样式文件
+├── package.json            # 项目配置
+├── data/                   # 初始数据（JSON→SQLite自动迁移）
+│   ├── scenes.json
+│   ├── signs.json
+│   ├── scene_signs.json
+│   └── hazard_tags.json
+├── uploads/                # 上传图片存储
+└── README.md               # 项目说明
 ```
 
 ## API接口

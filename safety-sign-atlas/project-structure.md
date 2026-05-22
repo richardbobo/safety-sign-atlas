@@ -3,59 +3,51 @@
 ## 目录结构
 ```
 safety-sign-atlas/
-├── index.html                    # 主页面
+├── index.html                    # 主页面（单页应用）
+├── app-improved.js               # 主前端逻辑
+├── server-optimized.js           # 后端服务（Express + SQLite）
 ├── style.css                     # 全局样式
-├── script.js                     # 主JavaScript文件
-├── data/                         # 数据存储
+├── package.json                  # 项目配置
+├── data/                         # 初始数据（JSON，首次运行时自动迁移到SQLite）
 │   ├── scenes.json              # 场景数据
-│   ├── signs-library.json       # 标志库
-│   └── templates.json           # 模板数据
-├── pages/                        # 页面组件
-│   ├── scene-form.html          # 场景创建表单
-│   ├── atlas-display.html       # 图集展示
-│   ├── sign-library.html        # 标志库管理
-│   └── purchase-system.html     # 采购系统
-├── components/                   # 可复用组件
-│   ├── sign-editor.js           # 标志编辑器
-│   ├── image-uploader.js        # 图片上传
-│   ├── pdf-generator.js         # PDF生成
-│   └── qr-code-generator.js     # 二维码生成
-├── assets/                       # 静态资源
-│   ├── images/                  # 图片资源
-│   ├── icons/                   # 图标
-│   └── templates/               # 模板文件
-└── docs/                        # 文档
-    ├── api.md                   # API文档
-    ├── user-guide.md            # 用户指南
-    └── standards.md             # 标准规范
+│   ├── signs.json               # 标志库数据
+│   ├── scene_signs.json         # 场景-标志关联
+│   └── hazard_tags.json         # 危险源标签
+├── uploads/                      # 上传图片存储
+├── safety_signs.db              # SQLite数据库（运行时生成）
+├── favicon.ico                   # 网站图标
+└── README.md                     # 项目说明
 ```
 
 ## 技术栈
 - **前端**: HTML5, CSS3, JavaScript (ES6+)
-- **UI框架**: 自定义CSS + 少量Bootstrap
-- **数据存储**: localStorage + JSON文件
-- **图表**: Chart.js (用于数据分析)
-- **PDF生成**: jsPDF + html2canvas
-- **二维码**: qrcode.js
+- **后端**: Node.js, Express.js
+- **数据库**: SQLite3
+- **文件上传**: Multer
+- **PDF生成**: jsPDF + html2canvas (CDN)
 
-## 开发阶段
-### 阶段1：基础表单系统 (本周)
-- [ ] 场景创建表单
-- [ ] 标志组合配置器
-- [ ] 图片上传管理
-- [ ] 本地数据存储
+## 数据库表结构
 
-### 阶段2：图集展示系统 (下周)
-- [ ] 动态图集生成
-- [ ] PDF导出功能
-- [ ] 响应式设计
+### scenes_new - 场景表
+- id, scene_code, scene_name, department
+- hazard_tags, location_description, installation_notes
+- scene_image_url, created_at, updated_at
 
-### 阶段3：管理系统 (下下周)
-- [ ] 标志库管理
-- [ ] 采购系统
-- [ ] 用户权限
+### sign_library - 标志库表
+- id, sign_code, sign_name, sign_type (warning/prohibition/instruction/information)
+- color_scheme, standard_size, material, description
+- image_url, is_ppe, created_at, updated_at
 
-### 阶段4：高级功能 (月底)
-- [ ] 二维码追溯
-- [ ] 移动端APP
-- [ ] API集成
+### scene_signs - 场景标志关联表
+- id, scene_id, sign_id, display_order
+- installation_height, observation_distance, special_requirements, added_at
+
+### custom_hazard_tags - 自定义危险源标签
+- id, tag_id, tag_name, color, created_at
+
+## 启动方式
+```bash
+npm install
+PORT=3000 node server-optimized.js
+# 访问 http://localhost:3000
+```
