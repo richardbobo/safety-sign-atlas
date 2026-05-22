@@ -2213,24 +2213,10 @@ function createPDFContent(scene) {
             <div style="margin-bottom: 30px;">
                 <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">安全标志列表 (共${scene.signs.length}个)</h2>
 
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                    ${sortSignsByType(scene.signs).map((sign, index) => {
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                    ${sortSignsByType(scene.signs).map((sign) => {
                         const imgUrl = getFullImageUrl(sign.image_url);
-                        const typeColor = sign.sign_type === 'warning' ? '#f59e0b' : sign.sign_type === 'prohibition' ? '#ef4444' : sign.sign_type === 'instruction' ? '#3b82f6' : '#10b981';
-                        return `
-                        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; display: flex; gap: 10px; align-items: center; background: #fff;">
-                            <div style="font-weight: bold; color: #999; min-width: 20px; text-align: center;">${index + 1}</div>
-                            <img src="${imgUrl}" style="width: 60px; height: 60px; object-fit: contain; border-radius: 4px; background: #f8f9fa; border: 1px solid #eee;" onerror="this.onerror=null;this.style.display='none';">
-                            <div style="flex:1; min-width:0;">
-                                <div style="font-weight: bold; font-size: 13px;">${sign.sign_name}</div>
-                                <div style="font-size: 11px; color: #666;">${sign.sign_code}</div>
-                                <div style="margin-top: 4px;">
-                                    <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;background:${typeColor}20;color:${typeColor};">${getSignTypeChinese(sign.sign_type)}</span>
-                                    <span style="font-size:11px;color:#666;margin-left:8px;">安装:${sign.installation_height||'1.5'}m 距离:${sign.observation_distance||'3'}m</span>
-                                </div>
-                                ${sign.special_requirements ? `<div style="font-size:10px;color:#999;margin-top:2px;">备注:${sign.special_requirements}</div>` : ''}
-                            </div>
-                        </div>`;
+                        return `<div style="border:1px solid #e0e0e0;border-radius:6px;padding:6px;background:#fff;text-align:center;"><img src="${imgUrl}" style="width:100%;height:100px;object-fit:contain;border-radius:4px;background:#f8f9fa;" onerror="this.onerror=null;this.style.display='none';"></div>`;
                     }).join('')}
                 </div>
             </div>
