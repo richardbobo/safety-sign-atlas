@@ -118,6 +118,23 @@ Promise.all([
         cfgRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxCfg*100),e[0])+'</td></tr>';
     });
 
+    // Sign usage stats: count each sign across all scenes
+    var signUsage={};
+    scenes.forEach(function(s){
+        (s.signs||[]).forEach(function(sg){
+            var key=sg.sign_name||sg.sign_code;
+            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,count:0,scenes:new Set()};
+            signUsage[key].count++;
+            signUsage[key].scenes.add(s.id);
+        });
+    });
+    var signUsageArr=Object.values(signUsage).sort(function(a,b){return b.count-a.count;});
+    var maxUse=signUsageArr.length>0?signUsageArr[0].count:1;
+    var usageRows='';
+    signUsageArr.forEach(function(u,i){
+        usageRows+='<tr><td>'+(i+1)+'</td><td><b>'+u.name+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+u.code+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.scenes.size+'个场景</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
+    });
+
     // Scene with most signs
     var topScenes=scenes.slice().sort(function(a,b){return(b.sign_count||0)-(a.sign_count||0);}).slice(0,10);
 
@@ -138,6 +155,8 @@ Promise.all([
             '<div class=section><h2>标志库类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+libRows+'</tbody></table></div>'+
             '<div class=section><h2>场景已配置标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+cfgRows+'</tbody></table></div>'+
         '</div>'+
+
+        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>标志名称</th><th>类型</th><th>使用数量</th><th>覆盖场景</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=6>暂无数据</td></tr>')+'</tbody></table></div>'+
 
         '<div class=charts>'+
             '<div class=section><h2>标志最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>标志数</th></tr></thead><tbody>'+
