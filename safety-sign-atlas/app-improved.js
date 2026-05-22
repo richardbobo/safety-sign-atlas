@@ -1758,161 +1758,88 @@ async function viewScene(sceneId) {
 
 // 显示场景详情模态框
 function showSceneDetailModal(scene) {
-    // 创建模态框HTML
-    const modalHtml = `
-        <div id="sceneDetailModal" class="modal" style="display: block; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-            <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 1000px; max-height: 85vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="color: #667eea; margin: 0;">场景详情 - ${scene.scene_name}</h2>
-                    <button onclick="closeSceneDetailModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-                    <!-- 左侧：场景基本信息 -->
-                    <div>
-                        <h3 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 15px;">基本信息</h3>
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                            <div style="margin-bottom: 10px;">
-                                <strong>场景编码：</strong>${scene.scene_code}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>场景名称：</strong>${scene.scene_name}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>所属部门：</strong>${scene.department}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>危险源标签：</strong>
-                                ${scene.hazard_tags ? scene.hazard_tags.split(',').filter(t=>t.trim()).map(tag => {
-                                    const name = getHazardTagName(tag.trim());
-                                    const color = getHazardTagColor(tag.trim());
-                                    return `<span style="display:inline-block;background:${color}20;color:${color};border:1px solid ${color};padding:2px 8px;border-radius:12px;font-size:0.8rem;margin:2px 4px;">${name}</span>`;
-                                }).join('') : '无'}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>位置描述：</strong>${scene.location_description || '未填写'}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>安装备注：</strong>${scene.installation_notes || '无'}
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>创建时间：</strong>${scene.created_at}
-                            </div>
-                            ${scene.scene_image_url ? `
-                                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e0e0e0;">
-                                    <strong>场景图片：</strong>
-                                    <div style="margin-top: 10px; text-align: center;">
-                                        <img src="${getFullImageUrl(scene.scene_image_url)}" 
-                                             style="max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid #e0e0e0; background: white;"
-                                             alt="场景图片"
-                                             onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGRkZGRkYiLz48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj7lm77niYfliLDlpLQ8L3RleHQ+PC9zdmc+';">
-                                    </div>
-                                </div>
-                            ` : ''}
-                            <div style="margin-bottom: 10px;">
-                                <strong>更新时间：</strong>${scene.updated_at}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 右侧：统计信息 -->
-                    <div>
-                        <h3 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 15px;">统计信息</h3>
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                            <div style="margin-bottom: 10px;">
-                                <strong>安全标志数量：</strong>${scene.signs ? scene.signs.length : 0} 个
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>标志类型分布：</strong>
-                                <div id="signTypeDistribution" style="margin-top: 10px;">
-                                    <!-- 动态生成类型分布 -->
-                                </div>
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>安装高度范围：</strong>
-                                <div id="heightRange" style="margin-top: 10px;">
-                                    <!-- 动态生成高度范围 -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 安全标志列表 -->
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin: 0;">安全标志列表</h3>
-                        <div style="display: flex; gap: 8px;">
-                            <button onclick="closeSceneDetailModal();addSignsToScene(${scene.id},'${scene.scene_name.replace(/'/g,"\\'")}','${scene.scene_code}')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                                ➕ 添加标志
-                            </button>
-                            <button onclick="exportSceneToPDF(${scene.id})" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                                📄 导出PDF指导文件
-                            </button>
-                        </div>
-                    </div>
-                    
-                    ${scene.signs && scene.signs.length > 0 ?
-                        `<div id="sceneSignsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 15px;">
-                            ${sortSignsByType(scene.signs).map((sign, index) => `
-                                <div class="sign-card" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px; background: white; position: relative; text-align: center;">
-                                    <button onclick="event.stopPropagation();removeSignFromScene(${sign.id},${scene.id})" title="从场景移除" style="position:absolute;top:4px;right:4px;background:#dc3545;color:white;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;z-index:1;display:flex;align-items:center;justify-content:center;">✕</button>
-                                    <img src="${getFullImageUrl(sign.image_url)}" alt="${sign.sign_name}"
-                                         style="width:100%;height:80px;object-fit:contain;background:#f8f9fa;border-radius:4px;" onerror="this.onerror=null;this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGRkZGRkYiLz48dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj7lm77niYfliLDlpLQ8L3RleHQ+PC9zdmc+';">
-                                </div>
-                            `).join('')}
-                        </div>` 
-                        : 
-                        `<div style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 8px; color: #666;">
-                            <p style="margin: 0;">该场景尚未添加任何安全标志</p>
-                            <button onclick="closeSceneDetailModal(); showPage('addSignsPage');" 
-                                    style="margin-top: 15px; background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
-                                前往添加标志
-                            </button>
-                        </div>`
-                    }
-                </div>
-                
-                <!-- 现场张贴指导 -->
-                ${scene.signs && scene.signs.length > 0 ? 
-                    `<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
-                        <h3 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-bottom: 15px;">现场张贴指导</h3>
-                        <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
-                            <h4 style="color: #1e40af; margin-top: 0;">张贴顺序建议：</h4>
-                            <ol style="margin: 10px 0; padding-left: 20px;">
-                                ${sortSignsByType(scene.signs).map((sign, index) => `
-                                    <li style="margin-bottom: 8px;">
-                                        <strong>${index + 1}. ${sign.sign_name} (${sign.sign_code})</strong>
-                                        - 安装高度: ${sign.installation_height || '1.5'}米
-                                        - 观察距离: ${sign.observation_distance || '3'}米
-                                        ${sign.special_requirements ? `- 特殊要求: ${sign.special_requirements}` : ''}
-                                    </li>
-                                `).join('')}
-                            </ol>
-                            <div style="margin-top: 15px; color: #666; font-size: 14px;">
-                                <strong>注意事项：</strong>
-                                <ul style="margin: 10px 0; padding-left: 20px;">
-                                    <li>按照建议顺序进行张贴，确保标志的可见性和逻辑性</li>
-                                    <li>安装高度应符合人体工程学，便于观察</li>
-                                    <li>确保标志表面清洁，无遮挡物</li>
-                                    <li>定期检查标志的完整性和清晰度</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>` 
-                    : ''
-                }
-            </div>
-        </div>
-    `;
-    
-    // 添加到页面
+    // Build hazard tags HTML
+    var tagsHtml = '无';
+    if (scene.hazard_tags) {
+        tagsHtml = scene.hazard_tags.split(',').filter(function(t){return t.trim();}).map(function(tag){
+            var t = tag.trim();
+            var n = getHazardTagName(t);
+            var c = getHazardTagColor(t);
+            return '<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:2px 8px;border-radius:12px;font-size:0.75rem;margin:2px 3px;">'+n+'</span>';
+        }).join('');
+    }
+
+    // Build info table rows
+    var infoRows = [
+        ['场景名称', scene.scene_name],
+        ['场景编码', scene.scene_code],
+        ['所属部门', scene.department],
+        ['位置描述', scene.location_description || '未填写'],
+        ['危险源', tagsHtml],
+        ['标志数量', (scene.signs||[]).length + ' 个'],
+        ['安装备注', scene.installation_notes || '无']
+    ];
+    var infoTable = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:10px;">'+
+        infoRows.map(function(r){return '<tr><td style="padding:5px 10px;border:1px solid #e5e7eb;background:#f3f4f6;font-weight:600;width:80px;color:#374151;">'+r[0]+'</td><td style="padding:5px 10px;border:1px solid #e5e7eb;color:#4b5563;">'+r[1]+'</td></tr>';}).join('')+
+        '</table>';
+
+    // Sign images grid (images only, plus delete button)
+    var signs = sortSignsByType(scene.signs||[]);
+    var signsGrid = '';
+    if (signs.length > 0) {
+        var cols = signs.length <= 4 ? 2 : signs.length <= 8 ? 3 : 4;
+        signsGrid = '<div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:8px;margin-bottom:10px;">'+
+            signs.map(function(s){
+                return '<div style="border:1px solid #e5e7eb;border-radius:6px;padding:5px;background:#fff;text-align:center;position:relative;">'+
+                    '<button onclick="event.stopPropagation();removeSignFromScene('+s.id+','+scene.id+')" title="移除" style="position:absolute;top:3px;right:3px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:9px;cursor:pointer;z-index:1;line-height:18px;">✕</button>'+
+                    '<img src="'+getFullImageUrl(s.image_url)+'" style="width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;" onerror="this.style.display=\'none\'" alt="'+s.sign_name+'">'+
+                '</div>';
+            }).join('')+
+            '</div>';
+    } else {
+        signsGrid = '<div style="text-align:center;padding:40px;color:#9ca3af;">该场景尚未添加安全标志</div>';
+    }
+
+    var modalHtml =
+        '<div id="sceneDetailModal" style="position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">'+
+        '<div style="background:#fff;border-radius:10px;padding:20px 24px;width:92%;max-width:960px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.12);">'+
+
+            // Header
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:2px solid #1a56db;padding-bottom:10px;">'+
+                '<div><h2 style="color:#1e3a5f;margin:0;font-size:1.25rem;">场景详情 - '+scene.scene_name+'</h2>'+
+                '<div style="font-size:0.8rem;color:#6b7280;margin-top:2px;">'+scene.scene_code+' | '+scene.department+'</div></div>'+
+                '<div style="display:flex;gap:6px;">'+
+                    '<button onclick="closeSceneDetailModal();addSignsToScene('+scene.id+',\''+scene.scene_name.replace(/'/g,"\\'")+'\',\''+scene.scene_code+'\')" style="background:#1a56db;color:#fff;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:600;">➕ 添加标志</button>'+
+                    '<button onclick="exportSceneToPDF('+scene.id+')" style="background:#059669;color:#fff;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:600;">📄 打印页面</button>'+
+                    '<button onclick="closeSceneDetailModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#6b7280;padding:0 4px;">&times;</button>'+
+                '</div>'+
+            '</div>'+
+
+            // Two-column body
+            '<div style="display:flex;gap:18px;">'+
+                // Left: scene image + info table
+                '<div style="flex:0 0 40%;min-width:0;">'+
+                    (scene.scene_image_url ? '<div style="border:1px solid #e5e7eb;border-radius:6px;padding:6px;background:#f9fafb;text-align:center;margin-bottom:8px;"><img src="'+getFullImageUrl(scene.scene_image_url)+'" style="width:100%;max-height:240px;object-fit:contain;border-radius:4px;" onerror="this.parentElement.innerHTML=\'<div style=color:#9ca3af;padding:40px;font-size:0.85rem;>暂无场景图片</div>\'" alt="场景图片"></div>' : '<div style="border:1px solid #e5e7eb;border-radius:6px;padding:40px;background:#f9fafb;text-align:center;color:#9ca3af;font-size:0.85rem;margin-bottom:8px;">暂无场景图片</div>')+
+                    infoTable+
+                '</div>'+
+
+                // Right: sign images + notes
+                '<div style="flex:1;min-width:0;">'+
+                    '<div style="font-weight:600;color:#1e3a5f;font-size:0.85rem;margin-bottom:8px;">安全标志列表 ('+signs.length+'个)</div>'+
+                    signsGrid+
+                    '<div style="background:#f0f5ff;border-left:3px solid #1a56db;border-radius:4px;padding:8px 12px;font-size:0.72rem;color:#374151;line-height:1.5;">'+
+                        '<b style="color:#1e3a5f;">现场张贴注意事项</b><br>'+
+                        '• 张贴顺序：警告→禁止→指令→提示，按优先级排列<br>'+
+                        '• 安装高度：标志中心距地面1.5~1.8米<br>'+
+                        '• 保持标志清洁、无遮挡，定期检查完整性<br>'+
+                        '• PPE标志设在更衣室入口、PPE存放处等位置'+
+                    '</div>'+
+                '</div>'+
+            '</div>'+
+
+        '</div></div>';
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // 动态计算统计信息
-    updateSceneStatistics(scene);
-    
-    // 添加CSS样式
     addSceneDetailStyles();
 }
 
