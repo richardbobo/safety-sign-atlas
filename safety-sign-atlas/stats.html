@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安全标志图集 - 数据统计</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;background:#f5f7fa;color:#333;min-height:100vh;}
+.header{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
+.header h1{font-size:1.1rem;color:#1e3a5f;}
+.header a{color:#1a56db;text-decoration:none;font-size:0.85rem;}
+.container{max-width:1100px;margin:0 auto;padding:20px;}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.card{background:#fff;border-radius:8px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;}
+.card .num{font-size:2rem;font-weight:700;color:#1a56db;}
+.card .label{font-size:0.8rem;color:#6b7280;margin-top:4px;}
+.section{background:#fff;border-radius:8px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.section h2{font-size:1rem;color:#1e3a5f;border-bottom:2px solid #1a56db;padding-bottom:8px;margin-bottom:12px;}
+table{width:100%;border-collapse:collapse;font-size:0.85rem;}
+th{background:#f3f4f6;padding:8px 12px;text-align:left;font-weight:600;color:#374151;border:1px solid #e5e7eb;}
+td{padding:7px 12px;border:1px solid #e5e7eb;color:#4b5563;}
+tr:nth-child(even) td{background:#f9fafb;}
+.bar-wrap{display:flex;align-items:center;gap:8px;}
+.bar{height:20px;background:linear-gradient(90deg,#1a56db,#3b82f6);border-radius:3px;min-width:2px;transition:width 0.3s;}
+.bar.warning{background:linear-gradient(90deg,#f59e0b,#fbbf24);}
+.bar.prohibition{background:linear-gradient(90deg,#ef4444,#f87171);}
+.bar.instruction{background:linear-gradient(90deg,#3b82f6,#60a5fa);}
+.bar.information{background:linear-gradient(90deg,#10b981,#34d399);}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.7rem;margin:1px 2px;font-weight:500;}
+.loading{text-align:center;padding:40px;color:#9ca3af;}
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>安全标志图集 — 数据统计</h1>
+    <a href="/">← 返回主页</a>
+</div>
+<div class="container" id="app">
+    <div class="loading">加载统计数据...</div>
+</div>
+
+<script>
+var API = '/api';
+
+function bar(c, w, cls) {
+    return '<div class=bar-wrap><span style="min-width:80px;font-size:0.8rem;">'+c+'</span><div class="bar '+(cls||'')+'" style="width:'+Math.max(w*3,2)+'px;"></div><span style="font-size:0.75rem;color:#6b7280;">'+w+'</span></div>';
+}
+
+Promise.all([
+    fetch(API+'/scenes').then(function(r){return r.json();}),
+    fetch(API+'/signs').then(function(r){return r.json();}),
+    fetch(API+'/custom-hazard-tags').then(function(r){return r.json();}).catch(function(){return[];})
+]).then(function(results){
+    var scenes=results[0], signs=results[1], customTags=results[2];
+
+    // Tag name resolution
+    var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
+    var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c',fall:'#059669',noise:'#b91c1c',dust:'#92400e',radiation:'#a21caf',high_temp:'#ea580c',low_temp:'#0891b2',slippery:'#ca8a04',confined:'#6d28d9'};
+    var tagMap={};
+    customTags.forEach(function(t){tagMap[t.tag_id]=t.tag_name;});
+    function tagName(tid){return tm[tid]||tagMap[tid]||(tid.startsWith('custom_')?'已删除':tid);}
+    function tagColor(tid){return tc[tid]||'#667eea';}
+
+    // Totals
+    var totalSignsInScenes=0;
+    scenes.forEach(function(s){totalSignsInScenes+=(s.sign_count||0);});
+
+    // Department stats
+    var deptMap={};
+    scenes.forEach(function(s){
+        var d=s.department||'未分配';
+        if(!deptMap[d]) deptMap[d]={scenes:0,signs:0};
+        deptMap[d].scenes++;
+        deptMap[d].signs+=(s.sign_count||0);
+    });
+    var deptRows='';
+    var maxDept=0;
+    Object.values(deptMap).forEach(function(v){if(v.scenes>maxDept)maxDept=v.scenes;});
+    Object.entries(deptMap).sort(function(a,b){return b[1].scenes-a[1].scenes;}).forEach(function(e){
+        deptRows+='<tr><td>'+e[0]+'</td><td>'+e[1].scenes+'</td><td>'+e[1].signs+'</td><td>'+bar('',e[1].scenes,'')+'</td></tr>';
+    });
+
+    // Hazard tag stats
+    var hazardMap={};
+    scenes.forEach(function(s){
+        if(s.hazard_tags){
+            s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){
+                var tid=t.trim();
+                if(!hazardMap[tid]) hazardMap[tid]=0;
+                hazardMap[tid]++;
+            });
+        }
+    });
+    var hazardRows='';
+    Object.entries(hazardMap).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){
+        var n=tagName(e[0]), c=tagColor(e[0]);
+        hazardRows+='<tr><td><span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span></td><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>';
+    });
+
+    // Sign type distribution
+    var typeMap={warning:0,prohibition:0,instruction:0,information:0};
+    signs.forEach(function(s){if(typeMap[s.sign_type]!==undefined) typeMap[s.sign_type]++;});
+    var typeNames={warning:'警告',prohibition:'禁止',instruction:'指令',information:'提示'};
+    var maxType=Math.max.apply(null,Object.values(typeMap))||1;
+    var typeRows='';
+    Object.entries(typeMap).forEach(function(e){
+        typeRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxType*100),e[0])+'</td></tr>';
+    });
+
+    // Scene with most signs
+    var topScenes=scenes.slice().sort(function(a,b){return(b.sign_count||0)-(a.sign_count||0);}).slice(0,10);
+
+    var html=
+        '<div class=cards>'+
+            '<div class=card><div class=num>'+scenes.length+'</div><div class=label>场景总数</div></div>'+
+            '<div class=card><div class=num>'+signs.length+'</div><div class=label>标志库总数</div></div>'+
+            '<div class=card><div class=num>'+totalSignsInScenes+'</div><div class=label>已配置标志</div></div>'+
+            '<div class=card><div class=num>'+Object.keys(deptMap).length+'</div><div class=label>涉及部门</div></div>'+
+        '</div>'+
+
+        '<div class=charts>'+
+            '<div class=section><h2>按部门统计</h2><table><thead><tr><th>部门</th><th>场景数</th><th>标志数</th><th>占比</th></tr></thead><tbody>'+deptRows+'</tbody></table></div>'+
+            '<div class=section><h2>按危险源统计</h2><table><thead><tr><th>标签</th><th>ID</th><th>场景数</th></tr></thead><tbody>'+(hazardRows||'<tr><td colspan=3>暂无数据</td></tr>')+'</tbody></table></div>'+
+        '</div>'+
+
+        '<div class=charts>'+
+            '<div class=section><h2>标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+typeRows+'</tbody></table></div>'+
+            '<div class=section><h2>标志最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>标志数</th></tr></thead><tbody>'+
+                topScenes.map(function(s){return '<tr><td><b>'+s.scene_name+'</b> <span style=color:#9ca3af;font-size:0.8rem;>'+s.scene_code+'</span></td><td>'+s.department+'</td><td>'+s.sign_count+'</td></tr>';}).join('')+
+            '</tbody></table></div>'+
+        '</div>';
+
+    document.getElementById('app').innerHTML=html;
+}).catch(function(e){document.getElementById('app').innerHTML='<div class=loading style=color:#dc3545;>加载失败: '+e.message+'</div>';});
+</script>
+</body>
+</html>
