@@ -3073,7 +3073,6 @@ async function removeSignFromScene(relationId, sceneId) {
         alert('移除标志失败: ' + e.message);
     }
 }
-}
 
 // 按类型排序标志
 function sortSignsByType(signs) {
