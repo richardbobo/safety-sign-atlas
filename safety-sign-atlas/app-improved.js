@@ -949,7 +949,7 @@ async function loadScenes() {
                             </div>
                         </div>
                         <div class="scene-actions">
-                            <button class="action-btn btn-view" onclick="viewNewLayout(${scene.id})" title="查看场景详情">👁️ 查看详情</button>
+                            <button class="action-btn btn-view" onclick="viewScene(${scene.id})" title="查看场景详情">👁️ 查看详情</button>
                             <button class="action-btn btn-edit" onclick="editScene(${scene.id})" title="编辑场景">✏️ 编辑</button>
                             <button class="action-btn btn-add-sign" onclick="addSignsToScene(${scene.id}, '${scene.scene_name.replace(/'/g, "\\'")}', '${scene.scene_code}')" title="添加标志">➕ 标志</button>
                             <button class="action-btn btn-delete-scene" onclick="confirmDeleteScene(${scene.id}, '${scene.scene_code}', '${scene.scene_name.replace(/'/g, "\\'")}')" title="删除场景">🗑️ 删除</button>
@@ -1837,17 +1837,23 @@ function showSceneDetailModal(scene) {
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin: 0;">安全标志列表</h3>
-                        <button onclick="exportSceneToPDF(${scene.id})" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                            📄 导出PDF指导文件
-                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="closeSceneDetailModal();addSignsToScene(${scene.id},'${scene.scene_name.replace(/'/g,"\\'")}','${scene.scene_code}')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                                ➕ 添加标志
+                            </button>
+                            <button onclick="exportSceneToPDF(${scene.id})" style="background: #48bb78; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                                📄 导出PDF指导文件
+                            </button>
+                        </div>
                     </div>
                     
                     ${scene.signs && scene.signs.length > 0 ? 
                         `<div id="sceneSignsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
                             ${sortSignsByType(scene.signs).map((sign, index) => `
                                 <div class="sign-card" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 15px; background: white; position: relative;">
-                                    <div style="position: absolute; top: 10px; right: 10px; background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                        序号: ${index + 1}
+                                    <div style="position: absolute; top: 10px; right: 10px; display: flex; gap: 5px;">
+                                        <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">序号: ${index + 1}</span>
+                                        <button onclick="event.stopPropagation();removeSignFromScene(${sign.id},${scene.id})" title="从场景移除" style="background: #dc3545; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
                                     </div>
                                     <div style="text-align: center; margin-bottom: 10px;">
                                         <img src="${getFullImageUrl(sign.image_url)}" alt="${sign.sign_name}" 
@@ -2801,11 +2807,15 @@ async function addSelectedSignsToScene() {
         
         if (allSuccess) {
             document.getElementById('add-signs-message').innerHTML = '<div class="message success">标志添加成功！</div>';
-            
+
             setTimeout(() => {
                 cancelAddSigns();
-                // 可以在这里刷新场景详情或显示成功消息
                 showDeleteMessage('标志已成功添加到场景', 'success');
+                // 如果详情弹窗开着，刷新它
+                const detailModal = document.getElementById('sceneDetailModal');
+                if (detailModal && detailModal.style.display === 'block') {
+                    viewScene(sceneId);
+                }
             }, 1500);
             
         } else {
@@ -3045,11 +3055,24 @@ function removeEditSceneImage() {
     if (imageUploadInput) imageUploadInput.value = '';
 }
 
-// 查看新布局（简洁版）
+// 查看新布局（简洁版）— 已改为内置模态框
 function viewNewLayout(sceneId) {
-    // 在新标签页中打开新布局页面
-    const timestamp = new Date().getTime();
-    window.open(`/new-scene-detail-simple.html?id=${sceneId}&_t=${timestamp}`, '_blank');
+    viewScene(sceneId);
+}
+
+// 从场景中移除标志
+async function removeSignFromScene(relationId, sceneId) {
+    if (!confirm('确定要从场景中移除此标志吗？')) return;
+    try {
+        const res = await fetch(`${API_BASE}/scene-signs/${relationId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('删除失败');
+        showDeleteMessage('标志已从场景移除', 'success');
+        // 重新加载场景详情
+        viewScene(sceneId);
+    } catch (e) {
+        alert('移除标志失败: ' + e.message);
+    }
+}
 }
 
 // 按类型排序标志

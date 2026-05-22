@@ -558,10 +558,23 @@ app.post('/api/scenes/:id/signs', (req, res) => {
                 res.status(500).json({ error: err.message });
                 return;
             }
-            res.json({ 
+            res.json({
                 id: this.lastID,
                 message: '标志添加成功'
             });
+        });
+    });
+});
+
+// 从场景中移除单个标志
+app.delete('/api/scene-signs/:id', (req, res) => {
+    const relationId = req.params.id;
+    db.get('SELECT * FROM scene_signs WHERE id = ?', [relationId], (err, row) => {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (!row) { res.status(404).json({ error: '关联记录不存在' }); return; }
+        db.run('DELETE FROM scene_signs WHERE id = ?', [relationId], function(err) {
+            if (err) { res.status(500).json({ error: err.message }); return; }
+            res.json({ success: true, message: '标志已从场景移除', deletedId: relationId });
         });
     });
 });
