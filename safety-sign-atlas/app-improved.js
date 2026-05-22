@@ -2616,8 +2616,8 @@ async function loadSignsForSelection() {
         console.error('加载标志列表失败:', error);
         container.innerHTML = `<div class="message error">加载失败: ${error.message}</div>`;
     }
-    // 确保搜索框事件已绑定
-    setTimeout(initSignSearchEvents, 100);
+    // 注册全局搜索函数
+    window._searchSigns = filterModalSignsBySearch;
 }
 
 // 获取标志颜色类
@@ -2757,7 +2757,7 @@ function applySignFilters() {
             const signName = (card.getAttribute('data-sign-name') || '').toLowerCase();
             const typeMatch = currentTypeFilter === 'all' || signType === currentTypeFilter || (currentTypeFilter === 'notification' && signType === 'information');
             const searchMatch = !currentSearchTerm || signName.includes(currentSearchTerm.toLowerCase());
-            card.style.display = (typeMatch && searchMatch) ? 'block' : 'none';
+            card.style.display = (typeMatch && searchMatch) ? '' : 'none';
         });
         // 更新分组标题的显示
         document.querySelectorAll('#sign-selector-container > div').forEach(group => {
