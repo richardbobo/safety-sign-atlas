@@ -662,7 +662,10 @@
     
     <!-- 场景列表 -->
     <div id="scene-list" class="page active">
-        <h2>场景列表</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h2 style="margin:0;">场景列表</h2>
+            <button onclick="window.open('export-scenes.html','_blank')" style="background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">📥 导出Excel</button>
+        </div>
         <div id="scenes-container">
             <div class="loading">加载场景列表...</div>
         </div>
