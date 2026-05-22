@@ -899,32 +899,20 @@ async function loadScenes() {
     try {
         const res = await fetch(`${API_BASE}/scenes`);
         const scenes = await res.json();
-        
+
         if (scenes.length === 0) {
             container.innerHTML = '<div class="message">暂无场景数据，请先创建场景</div>';
+            cachedScenesData = [];
             return;
         }
-        
-        // 为每个场景获取标志信息
-        const scenesWithSigns = await Promise.all(scenes.map(async (scene) => {
-            try {
-                const signsRes = await fetch(`${API_BASE}/scenes/${scene.id}`);
-                const sceneDetail = await signsRes.json();
-                return {
-                    ...scene,
-                    signs: sceneDetail.signs || []
-                };
-            } catch (error) {
-                console.error(`获取场景${scene.id}的标志信息失败:`, error);
-                return {
-                    ...scene,
-                    signs: []
-                };
-            }
-        }));
+
+        cachedScenesData = scenes;
+        if (currentSceneView === 'list') { renderSceneTable(scenes); return; }
+
+        // signs 已由 API 直接返回，无需额外请求
         
         let html = '';
-        scenesWithSigns.forEach(scene => {
+        scenes.forEach(scene => {
             // 解析危险源标签
             const hazardTags = scene.hazard_tags ? scene.hazard_tags.split(',').filter(tag => tag.trim()) : [];
             const hazardBadges = hazardTags.map(tag => {
@@ -1012,6 +1000,58 @@ async function loadScenes() {
         container.innerHTML = `<div class="message error">加载失败: ${error.message}</div>`;
     }
 }
+
+// 场景视图模式切换
+var currentSceneView = 'card';
+var cachedScenesData = [];
+
+function switchSceneView(mode) {
+    currentSceneView = mode;
+    document.getElementById('view-card-btn').style.background = mode === 'card' ? '#1a56db' : '#fff';
+    document.getElementById('view-card-btn').style.color = mode === 'card' ? '#fff' : '#374151';
+    document.getElementById('view-list-btn').style.background = mode === 'list' ? '#1a56db' : '#fff';
+    document.getElementById('view-list-btn').style.color = mode === 'list' ? '#fff' : '#374151';
+    if (mode === 'card') renderSceneCards(cachedScenesData);
+    else renderSceneTable(cachedScenesData);
+}
+
+function renderSceneTable(scenes) {
+    var c = document.getElementById('scenes-container');
+    if (!scenes.length) { c.innerHTML = '<div class="message">暂无场景数据</div>'; return; }
+    var tm = { electric:'触电危险', fire:'火灾危险', chemical:'化学品危险', mechanical:'机械伤害', fall:'坠落危险', noise:'噪音危害', dust:'粉尘危害', radiation:'辐射危险', high_temp:'高温烫伤', low_temp:'低温冻伤', slippery:'滑倒危险', confined:'受限空间' };
+    var tc = { electric:'#92400e', fire:'#dc2626', chemical:'#7c3aed', mechanical:'#ea580c', fall:'#059669', noise:'#b91c1c', dust:'#92400e', radiation:'#a21caf', high_temp:'#ea580c', low_temp:'#0891b2', slippery:'#ca8a04', confined:'#6d28d9' };
+    var h = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:#f3f4f6;">'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">场景编号</th>'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">场景名称</th>'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">部门</th>'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">位置</th>'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">危险源</th>'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:center;">标志</th>'+
+        '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">操作</th></tr></thead><tbody>';
+    scenes.forEach(function(s){
+        var tags='';
+        if(s.hazard_tags){s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){var n=tm[t]||t;var c=tc[t]||'#667eea';tags+='<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:1px 6px;border-radius:8px;font-size:0.7rem;margin:1px;">'+n+'</span>';});}
+        var signs=s.signs||[];
+        var imgs='';
+        if(signs.length>0){signs.slice(0,5).forEach(function(sg){if(sg.image_url){imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;" onerror="this.style.display=\'none\'">';}});if(signs.length>5) imgs+='<span style="font-size:0.7rem;color:#9ca3af;">+'+ (signs.length-5)+'</span>';}
+        else imgs='<span style="color:#9ca3af;font-size:0.7rem;">无</span>';
+        h+='<tr>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+s.scene_code+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;"><b>'+s.scene_name+'</b></td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+s.department+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;font-size:0.8rem;">'+(s.location_description||'')+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+(tags||'<span style="color:#9ca3af;">无</span>')+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;">'+imgs+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;white-space:nowrap;">'+
+                '<button onclick="viewScene('+s.id+')" style="background:#1a56db;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">详情</button> '+
+                '<button onclick="addSignsToScene('+s.id+',\''+(s.scene_name||'').replace(/'/g,"\\'")+'\',\''+s.scene_code+'\')" style="background:#059669;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">+标志</button>'+
+            '</td></tr>';
+    });
+    h+='</tbody></table>';
+    c.innerHTML=h;
+}
+
+function renderSceneCards(scenes){cachedScenesData=scenes;loadScenes();}
 
 // 获取危险源标签名称
 function getHazardTagName(tagId) {

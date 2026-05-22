@@ -663,7 +663,13 @@
     <!-- 场景列表 -->
     <div id="scene-list" class="page active">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <h2 style="margin:0;">场景列表</h2>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <h2 style="margin:0;">场景列表</h2>
+                <div style="display:flex;border:1px solid #d1d5db;border-radius:6px;overflow:hidden;">
+                    <button id="view-card-btn" onclick="switchSceneView('card')" style="background:#1a56db;color:#fff;border:none;padding:4px 10px;cursor:pointer;font-size:0.75rem;">卡片</button>
+                    <button id="view-list-btn" onclick="switchSceneView('list')" style="background:#fff;color:#374151;border:none;padding:4px 10px;cursor:pointer;font-size:0.75rem;">列表</button>
+                </div>
+            </div>
             <button onclick="window.open('export-scenes.html','_blank')" style="background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">📥 导出Excel</button>
         </div>
         <div id="scenes-container">

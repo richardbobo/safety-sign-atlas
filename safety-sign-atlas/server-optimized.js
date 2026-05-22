@@ -320,12 +320,24 @@ app.post('/api/signs/upload', upload.single('image'), (req, res) => {
 
 // 获取所有场景
 app.get('/api/scenes', (req, res) => {
-    const sql = 'SELECT * FROM scenes_new ORDER BY scene_code';
+    const sql = `
+        SELECT sn.*,
+            (SELECT COUNT(*) FROM scene_signs ss WHERE ss.scene_id = sn.id) as sign_count,
+            (SELECT json_group_array(json_object('id',ss.id,'sign_code',sl.sign_code,'sign_name',sl.sign_name,'sign_type',sl.sign_type,'image_url',sl.image_url,'installation_height',ss.installation_height,'observation_distance',ss.observation_distance,'special_requirements',ss.special_requirements))
+             FROM scene_signs ss JOIN sign_library sl ON ss.sign_id = sl.id WHERE ss.scene_id = sn.id) as signs_json
+        FROM scenes_new sn
+        ORDER BY sn.scene_code
+    `;
     db.all(sql, [], (err, rows) => {
         if (err) {
             res.status(500).json({ error: err.message });
             return;
         }
+        rows.forEach(r => {
+            r.sign_count = r.sign_count || 0;
+            try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
+            delete r.signs_json;
+        });
         res.json(rows);
     });
 });
