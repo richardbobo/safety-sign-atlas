@@ -5,103 +5,119 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>安全标志张贴指导</title>
 <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Microsoft YaHei','SimHei',Arial,sans-serif; color: #333; padding: 20px 30px; max-width: 900px; margin: 0 auto; }
-    .header { border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; }
-    .header h1 { font-size: 20px; color: #2c3e50; margin-bottom: 4px; }
-    .header .meta { font-size: 12px; color: #666; display: flex; justify-content: space-between; flex-wrap: wrap; }
-    .header .meta span { margin-right: 10px; }
-    .scene-img { text-align: center; margin-bottom: 15px; }
-    .scene-img img { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; border: 1px solid #e0e0e0; }
-    .signs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
-    .signs-grid.col2 { grid-template-columns: repeat(2, 1fr); }
-    .signs-grid.col3 { grid-template-columns: repeat(3, 1fr); }
-    .sign-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; text-align: center; background: #fff; }
-    .sign-card img { width: 100%; height: 140px; object-fit: contain; border-radius: 4px; background: #f8f9fa; }
-    .sign-card .name { font-size: 11px; font-weight: bold; margin-top: 4px; color: #333; }
-    .sign-card .code { font-size: 10px; color: #666; }
-    .sign-card .info { font-size: 10px; color: #999; margin-top: 2px; }
-    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin: 2px 3px; }
-    .footer { border-top: 1px solid #eee; padding-top: 8px; font-size: 10px; color: #999; text-align: center; margin-top: 10px; }
-    @media print {
-        body { padding: 10px 15px; }
-        .signs-grid { gap: 4px; }
-        .sign-card { padding: 4px; }
-        .sign-card img { height: 120px; }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;color:#333;padding:24px 28px;max-width:960px;margin:0 auto;}
+    .header{border-bottom:2.5px solid #1a56db;padding-bottom:12px;margin-bottom:18px;}
+    .header h1{font-size:22px;color:#1e3a5f;margin-bottom:6px;letter-spacing:0.5px;}
+    .header .sub{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;font-size:12px;color:#6b7280;}
+    .header .sub .tags{margin-top:4px;}
+    .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;margin:1px 3px;font-weight:500;}
+
+    .main{display:flex;gap:20px;margin-bottom:16px;}
+    .left{flex:0 0 42%;}
+    .left .scene-img{border:1px solid #e5e7eb;border-radius:6px;padding:6px;background:#f9fafb;text-align:center;}
+    .left .scene-img img{width:100%;max-height:320px;object-fit:contain;border-radius:4px;}
+    .left .scene-img .placeholder{color:#9ca3af;padding:60px 0;font-size:14px;}
+
+    .right{flex:1;display:flex;flex-direction:column;gap:12px;}
+    .signs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+    .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
+    .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
+    .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:5px;background:#fff;text-align:center;transition:box-shadow 0.15s;}
+    .sign-card:hover{box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .sign-card img{width:100%;height:110px;object-fit:contain;border-radius:3px;background:#f9fafb;}
+
+    .notes{background:#f0f5ff;border-left:3px solid #1a56db;border-radius:4px;padding:10px 14px;font-size:11px;color:#374151;line-height:1.6;}
+    .notes b{color:#1e3a5f;}
+    .notes ul{margin:4px 0 0 0;padding:0;list-style:none;}
+    .notes li::before{content:'• ';color:#1a56db;font-weight:bold;}
+
+    .info-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;}
+    .info-table td{padding:3px 8px;border:1px solid #e5e7eb;}
+    .info-table td:first-child{background:#f3f4f6;font-weight:600;width:80px;color:#374151;}
+    .info-table td:last-child{color:#4b5563;}
+
+    .footer{border-top:1px solid #e5e7eb;padding-top:8px;font-size:10px;color:#9ca3af;text-align:center;margin-top:12px;}
+
+    @media print{
+        body{padding:12px 16px;max-width:100%;}
+        .main{gap:12px;}
+        .sign-card img{height:100px;}
+        .signs-grid{gap:4px;}
+        .notes{font-size:10px;}
     }
 </style>
 </head>
 <body>
 <div class="header">
     <h1>安全标志张贴指导文件</h1>
-    <div class="meta">
+    <div class="sub">
         <span id="timeStr"></span>
-        <span id="sceneInfo"></span>
+        <span id="sceneInfo" style="font-weight:600;"></span>
     </div>
-    <div id="tagsRow" style="margin-top: 4px;"></div>
+    <div class="tags" id="tagsRow"></div>
 </div>
-<div class="scene-img" id="sceneImg" style="display:none;"></div>
-<div id="signsContainer"></div>
+<div class="main">
+    <div class="left" id="leftPanel"></div>
+    <div class="right">
+        <div id="signsGrid" class="signs-grid"></div>
+        <div class="notes" id="notesSection"></div>
+    </div>
+</div>
 <div class="footer" id="footer"></div>
 
 <script>
-const API_BASE = window.location.origin + '/api';
-const params = new URLSearchParams(window.location.search);
-const sceneId = params.get('id');
+var API = window.location.origin + '/api';
+var id = new URLSearchParams(window.location.search).get('id');
+if(!id){document.body.innerHTML='<h3 style=padding:40px;text-align:center;color:#999;>缺少场景ID参数</h3>';}
 
-if (!sceneId) {
-    document.body.innerHTML = '<h3>缺少场景ID参数</h3>';
-} else {
-    fetch(API_BASE + '/scenes/' + sceneId).then(r => r.json()).then(scene => {
-        document.title = '安全标志张贴 - ' + scene.scene_name;
-        var now = new Date();
-        var ts = now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-        document.getElementById('timeStr').textContent = '生成: ' + ts;
-        document.getElementById('sceneInfo').innerHTML = '<span><b>' + scene.scene_name + '</b></span><span>' + scene.scene_code + '</span><span>' + scene.department + '</span>' + (scene.location_description ? '<span>位置: ' + scene.location_description + '</span>' : '');
+fetch(API+'/scenes/'+id).then(function(r){return r.json();}).then(function(scene){
+    document.title='安全标志张贴 - '+scene.scene_name;
+    var ts=(function(){var d=new Date();return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');})();
+    document.getElementById('timeStr').textContent=ts;
+    document.getElementById('sceneInfo').textContent=scene.scene_name+' | '+scene.scene_code+' | '+scene.department;
 
-        // Hazard tags
-        if (scene.hazard_tags) {
-            var tags = scene.hazard_tags.split(',').filter(t => t.trim());
-            document.getElementById('tagsRow').innerHTML = tags.map(function(t) {
-                var name = t.trim();
-                var color = '#667eea';
-                if (t.startsWith('custom_')) {
-                    // Try to resolve — use simple fallbacks
-                    name = t.replace('custom_', '标签');
-                } else {
-                    var map = { electric:'触电危险', fire:'火灾危险', chemical:'化学品危险', mechanical:'机械伤害', fall:'坠落危险', noise:'噪音危害', dust:'粉尘危害', radiation:'辐射危险', high_temp:'高温烫伤', low_temp:'低温冻伤', slippery:'滑倒危险', confined:'受限空间' };
-                    name = map[t.trim()] || t.trim();
-                    var cmap = { electric:'#92400e', fire:'#dc2626', chemical:'#7c3aed', mechanical:'#ea580c', fall:'#059669', noise:'#b91c1c', dust:'#92400e', radiation:'#a21caf', high_temp:'#ea580c', low_temp:'#0891b2', slippery:'#ca8a04', confined:'#6d28d9' };
-                    color = cmap[t.trim()] || '#667eea';
-                }
-                return '<span class="tag" style="background:'+color+'20;color:'+color+';border:1px solid '+color+';">'+name+'</span>';
-            }).join('');
-        }
+    // Tags
+    var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
+    var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c',fall:'#059669',noise:'#b91c1c',dust:'#92400e',radiation:'#a21caf',high_temp:'#ea580c',low_temp:'#0891b2',slippery:'#ca8a04',confined:'#6d28d9'};
+    var th='';
+    if(scene.hazard_tags){scene.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){t=t.trim();var n=tm[t]||(t.startsWith('custom_')?'已删除':t);var c=tc[t]||'#667eea';th+='<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span>';});}
+    document.getElementById('tagsRow').innerHTML=th||'<span style=color:#9ca3af;font-size:12px;>无</span>';
 
-        // Scene image
-        if (scene.scene_image_url) {
-            document.getElementById('sceneImg').style.display = 'block';
-            document.getElementById('sceneImg').innerHTML = '<img src="' + scene.scene_image_url + '" alt="场景图片">';
-        }
+    // Left: scene image + info
+    var l=document.getElementById('leftPanel');
+    var ih=scene.scene_image_url?'<img src="'+scene.scene_image_url+'" alt=场景图片 onerror="this.parentElement.innerHTML=\'<div class=placeholder>暂无场景图片</div>\'">':'<div class=placeholder>暂无场景图片</div>';
+    l.innerHTML='<div class=scene-img>'+ih+'</div>'+
+        '<table class=info-table>'+
+        '<tr><td>场景名称</td><td>'+scene.scene_name+'</td></tr>'+
+        '<tr><td>场景编码</td><td>'+scene.scene_code+'</td></tr>'+
+        '<tr><td>所属部门</td><td>'+scene.department+'</td></tr>'+
+        '<tr><td>位置描述</td><td>'+(scene.location_description||'未填写')+'</td></tr>'+
+        '<tr><td>危险源</td><td>'+(th||'无')+'</td></tr>'+
+        '<tr><td>标志数量</td><td>'+(scene.signs||[]).length+' 个</td></tr>'+
+        '<tr><td>安装备注</td><td>'+(scene.installation_notes||'无')+'</td></tr>'+
+        '</table>';
 
-        // Signs grid
-        var signs = (scene.signs||[]).sort(function(a,b){
-            var o = { warning:1, prohibition:2, instruction:3, information:4 };
-            return (o[a.sign_type]||5) - (o[b.sign_type]||5);
-        });
-        var grid = document.getElementById('signsContainer');
-        var cls = signs.length <= 4 ? 'signs-grid col2' : signs.length <= 8 ? 'signs-grid col3' : 'signs-grid';
-        grid.className = cls;
-        signs.forEach(function(s){
-            var typeNames = { warning:'警告', prohibition:'禁止', instruction:'指令', information:'提示' };
-            grid.innerHTML += '<div class="sign-card"><img src="'+(s.image_url||'')+'" onerror="this.style.display=\'none\'"><div class="name">'+s.sign_name+'</div><div class="code">'+s.sign_code+'</div><div class="info">'+ (typeNames[s.sign_type]||'') +' | '+ (s.installation_height||'1.5')+'m | '+ (s.observation_distance||'3')+'m</div></div>';
-        });
+    // Right: signs grid (images only)
+    var signs=(scene.signs||[]).sort(function(a,b){var o={warning:1,prohibition:2,instruction:3,information:4};return(o[a.sign_type]||5)-(o[b.sign_type]||5);});
+    var g=document.getElementById('signsGrid');
+    if(signs.length<=4)g.className='signs-grid col2';else if(signs.length<=8)g.className='signs-grid col3';
+    signs.forEach(function(s){g.innerHTML+='<div class=sign-card><img src="'+(s.image_url||'')+'" onerror="this.style.display=\'none\'" alt="'+s.sign_name+'"></div>';});
 
-        document.getElementById('footer').textContent = '安全标志图集管理系统 | ' + ts;
-    }).catch(function(e){
-        document.body.innerHTML = '<h3>加载失败: ' + e.message + '</h3>';
-    });
-}
+    // Notes
+    document.getElementById('notesSection').innerHTML=
+        '<b>现场张贴注意事项</b>'+
+        '<ul>'+
+        '<li>张贴顺序：警告标志→禁止标志→指令标志→提示标志，按优先级从高到低排列</li>'+
+        '<li>安装高度：标志中心距地面1.5~1.8米，确保处于正常视线范围内</li>'+
+        '<li>观察距离：根据标志大小选择合适距离，一般3~5米范围内清晰可辨</li>'+
+        '<li>环境要求：避开强光直射、遮挡物和污染源，保持标志表面清洁</li>'+
+        '<li>定期维护：每季度检查标志完整性，及时更换褪色、损坏的标志</li>'+
+        '<li>PPE标志应设置在更衣室入口、PPE存放处等显眼位置</li>'+
+        '</ul>';
+
+    document.getElementById('footer').textContent='安全标志图集管理系统 | '+ts;
+}).catch(function(e){document.body.innerHTML='<h3 style=padding:40px;text-align:center;color:#999;>加载失败: '+e.message+'</h3>';});
 </script>
 </body>
 </html>
