@@ -334,7 +334,10 @@ app.get('/api/scenes', (req, res) => {
         SELECT sn.*,
             (SELECT COUNT(*) FROM scene_signs ss WHERE ss.scene_id = sn.id) as sign_count,
             (SELECT json_group_array(json_object('id',ss.id,'sign_code',sl.sign_code,'sign_name',sl.sign_name,'sign_type',sl.sign_type,'image_url',sl.image_url,'installation_height',ss.installation_height,'observation_distance',ss.observation_distance,'special_requirements',ss.special_requirements))
-             FROM scene_signs ss JOIN sign_library sl ON ss.sign_id = sl.id WHERE ss.scene_id = sn.id) as signs_json
+             FROM scene_signs ss JOIN sign_library sl ON ss.sign_id = sl.id WHERE ss.scene_id = sn.id) as signs_json,
+            (SELECT COUNT(*) FROM workstations w WHERE w.scene_id = sn.id) as workstation_count,
+            (SELECT json_group_array(json_object('id',w.id,'workstation_code',w.workstation_code,'workstation_name',w.workstation_name))
+             FROM workstations w WHERE w.scene_id = sn.id) as workstations_json
         FROM scenes_new sn
         ORDER BY sn.scene_code
     `;
@@ -345,8 +348,11 @@ app.get('/api/scenes', (req, res) => {
         }
         rows.forEach(r => {
             r.sign_count = r.sign_count || 0;
+            r.workstation_count = r.workstation_count || 0;
             try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
+            try { r.workstations = JSON.parse(r.workstations_json || '[]'); } catch(e) { r.workstations = []; }
             delete r.signs_json;
+            delete r.workstations_json;
         });
         res.json(rows);
     });
@@ -621,6 +627,19 @@ app.get('/api/workstations/:id', (req, res) => {
         if (err) { res.status(500).json({ error: err.message }); return; }
         if (!row) { res.status(404).json({ error: '岗位不存在' }); return; }
         res.json(row);
+    });
+});
+
+// 获取下一个岗位编码
+app.get('/api/workstations/next-code', (req, res) => {
+    db.get('SELECT MAX(workstation_code) as max_code FROM workstations', (err, result) => {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        var next = 1;
+        if (result && result.max_code) {
+            var m = result.max_code.match(/WS-(\d+)/);
+            if (m) next = parseInt(m[1]) + 1;
+        }
+        res.json({ next_code: 'WS-' + String(next).padStart(3, '0') });
     });
 });
 

@@ -140,8 +140,12 @@ function filterTable(){
 function openAddModal(){
     document.getElementById('modalTitle').textContent='新增岗位';
     document.getElementById('editId').value='';
-    document.getElementById('editCode').value='';
+    document.getElementById('editCode').value='自动生成中...';
     document.getElementById('editName').value='';
+    // 自动获取编码
+    fetch(API+'/workstations/next-code').then(function(r){return r.json();}).then(function(d){
+        document.getElementById('editCode').value=d.next_code;
+    }).catch(function(){document.getElementById('editCode').value='';});
     document.getElementById('editScene').value='';
     document.getElementById('editDept').value='';
     document.getElementById('editLocation').value='';
