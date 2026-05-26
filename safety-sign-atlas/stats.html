@@ -123,17 +123,17 @@ Promise.all([
     scenes.forEach(function(s){
         (s.signs||[]).forEach(function(sg){
             var key=sg.sign_name||sg.sign_code;
-            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,count:0,scenes:new Set(),image_url:sg.image_url||''};
+            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,image_url:sg.image_url,count:0,scenes:new Set()};
             signUsage[key].count++;
             signUsage[key].scenes.add(s.id);
-            if(sg.image_url && !signUsage[key].image_url) signUsage[key].image_url=sg.image_url;
         });
     });
     var signUsageArr=Object.values(signUsage).sort(function(a,b){return b.count-a.count;});
     var maxUse=signUsageArr.length>0?signUsageArr[0].count:1;
     var usageRows='';
     signUsageArr.forEach(function(u,i){
-        usageRows+='<tr><td>'+(i+1)+'</td><td>'+(u.image_url?'<img src="'+u.image_url+'" style="width:40px;height:40px;object-fit:contain;border:1px solid #e5e7eb;border-radius:4px;display:block;" loading="lazy">':'<span style=color:#d1d5db;font-size:0.75rem;>无图</span>')+'</td><td><b>'+u.name+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+u.code+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.scenes.size+'个场景</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
+        var imgTag=u.image_url?'<img src="'+u.image_url+'" style="width:40px;height:40px;object-fit:contain;border-radius:4px;background:#f9fafb;border:1px solid #e5e7eb;" onerror="this.style.display=\'none\'">':'';
+        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+u.name+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+u.code+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.scenes.size+'个场景</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
     });
 
     // Scene with most signs
@@ -157,7 +157,7 @@ Promise.all([
             '<div class=section><h2>场景已配置标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+cfgRows+'</tbody></table></div>'+
         '</div>'+
 
-        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>图片</th><th>标志名称</th><th>类型</th><th>使用数量</th><th>覆盖场景</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=7>暂无数据</td></tr>')+'</tbody></table></div>'+
+        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>缩略图</th><th>标志名称</th><th>类型</th><th>使用数量</th><th>覆盖场景</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=7>暂无数据</td></tr>')+'</tbody></table></div>'+
 
         '<div class=charts>'+
             '<div class=section><h2>标志最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>标志数</th></tr></thead><tbody>'+

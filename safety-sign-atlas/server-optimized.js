@@ -20,7 +20,7 @@ if (!fs.existsSync('./uploads')) {
 }
 
 // 数据库连接
-const db = new sqlite3.Database('./safety_signs.db', (err) => {
+const db = new sqlite3.Database('./safety_signs.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
         console.error('数据库连接失败:', err.message);
     } else {
