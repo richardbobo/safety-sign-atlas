@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>安全标志图集管理系统 - 改进版</title>
     <style>
-        body { font-family: Arial; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        *{margin:0;padding:0;box-sizing:border-box;} body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;background:#f5f7fa;color:#333;min-height:100vh;} .container{max-width:1200px;margin:0 auto;padding:20px;}
         .header { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; padding: 20px; text-align: center; }
         .header h1 { font-size: 1.3rem; margin-bottom: 4px; }
         .header p { font-size: 0.85rem; opacity: 0.85; }
@@ -397,7 +397,8 @@
         <a href="workstations.html" style="text-decoration:none;"><button>💼 工作岗位</button></a>
         <a href="stats.html" style="text-decoration:none;"><button>📊 数据统计</button></a>
     </div>
-    
+
+    <div class="container">
     <!-- 标志图集 -->
     <div id="sign-library" class="page">
         <h2>标志图集管理</h2>
@@ -888,7 +889,8 @@
             </div>
         </div>
     </div>
-    
+    </div>
+
     <!-- PDF生成库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
