@@ -65,6 +65,17 @@ tr:hover td{background:#f9fafb;}
     </table>
 </div>
 
+<!-- 场景详情模态框 -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal" style="max-width:700px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h2 id="detailTitle" style="margin:0;">场景详情</h2>
+            <button onclick="document.getElementById('detailModal').classList.remove('active')" style="background:none;border:none;font-size:1.3rem;cursor:pointer;">&times;</button>
+        </div>
+        <div id="detailContent" style="max-height:60vh;overflow-y:auto;"></div>
+    </div>
+</div>
+
 <!-- 编辑/新增模态框 -->
 <div class="modal-overlay" id="editModal">
     <div class="modal">
@@ -113,7 +124,7 @@ function renderTable(ws){
     if(!ws.length){t.innerHTML='<tr><td colspan=7 style=text-align:center;color:#9ca3af;padding:30px;>暂无工作岗位</td></tr>';return;}
     t.innerHTML=ws.map(function(w){
         return '<tr><td>'+w.workstation_code+'</td><td><b>'+w.workstation_name+'</b></td><td>'+w.scene_code+' - '+w.scene_name+'</td><td>'+(w.department||'')+'</td><td>'+(w.location||'')+'</td><td style=text-align:center;>'+(w.sign_count||0)+'</td>'+
-        '<td style=white-space:nowrap;><button class="btn btn-warning btn-sm" onclick="openEditModal('+w.id+')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteWorkstation('+w.id+',\''+w.workstation_code+'\')">删除</button></td></tr>';
+        '<td style=white-space:nowrap;><button class="btn btn-sm" style="background:#6366f1;color:#fff;" onclick="viewWorkstationScene('+w.scene_id+')">查看</button> <button class="btn btn-warning btn-sm" onclick="openEditModal('+w.id+')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteWorkstation('+w.id+',\''+w.workstation_code+'\')">删除</button></td></tr>';
     }).join('');
 }
 function filterTable(){
@@ -185,6 +196,34 @@ document.getElementById('editScene').addEventListener('change',function(){
     var scene=allScenes.find(function(s){return s.id===sceneId;});
     if(scene&&scene.department) document.getElementById('editDept').value=scene.department;
 });
+
+function viewWorkstationScene(sceneId){
+    var modal=document.getElementById('detailModal');
+    document.getElementById('detailContent').innerHTML='<div class=loading>加载中...</div>';
+    modal.classList.add('active');
+    fetch(API+'/scenes/'+sceneId).then(function(r){return r.json();}).then(function(scene){
+        var signs=scene.signs||[];
+        var signImgs=signs.map(function(sg){
+            return sg.image_url?'<img src="'+sg.image_url+'" style="width:60px;height:60px;object-fit:contain;border:1px solid #e5e7eb;border-radius:4px;margin:2px;" title="'+sg.sign_name+'" loading="lazy">':'';
+        }).filter(Boolean).join('');
+        var typeNames={warning:'警告',prohibition:'禁止',instruction:'指令',information:'提示'};
+        var typeCounts={};
+        signs.forEach(function(sg){typeCounts[sg.sign_type]=(typeCounts[sg.sign_type]||0)+1;});
+        var typeBadges=Object.entries(typeCounts).map(function(e){return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;margin:2px;background:#e0e7ff;color:#3730a3;">'+typeNames[e[0]]+': '+e[1]+'</span>';}).join('');
+
+        var wss=(scene.workstations||[]).map(function(w){
+            return '<span style="display:inline-block;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:10px;margin:2px 4px;font-size:0.7rem;">'+w.workstation_code+' '+w.workstation_name+'</span>';
+        }).join('')||'无';
+
+        document.getElementById('detailTitle').textContent='场景详情 - '+scene.scene_name;
+        document.getElementById('detailContent').innerHTML=
+            '<div style="margin-bottom:12px;"><b>场景编码：</b>'+scene.scene_code+' | <b>部门：</b>'+scene.department+' | <b>位置：</b>'+(scene.location_description||'未填写')+'</div>'+
+            '<div style="margin-bottom:12px;"><b>标志：</b>'+signs.length+'个 '+typeBadges+'</div>'+
+            '<div style="margin-bottom:8px;"><b>标志预览：</b></div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">'+(signImgs||'<span style=color:#9ca3af;>无标志</span>')+'</div>'+
+            '<div style="margin-bottom:8px;"><b>关联岗位：</b>'+wss+'</div>'+
+            '<div style="margin-bottom:8px;"><b>安装备注：</b>'+(scene.installation_notes||'无')+'</div>';
+    }).catch(function(e){document.getElementById('detailContent').innerHTML='<div style=color:#dc3545;>加载失败: '+e.message+'</div>';});
+}
 
 loadScenes(); loadWorkstations();
 </script>
