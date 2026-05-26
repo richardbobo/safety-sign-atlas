@@ -4,8 +4,16 @@
 <meta charset="UTF-8">
 <title>场景清单导出</title>
 <style>
-    body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;padding:15px 20px;color:#333;}
-    h1{font-size:18px;color:#1e3a5f;border-bottom:2px solid #1a56db;padding-bottom:8px;margin-bottom:4px;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;color:#333;background:#f5f7fa;min-height:100vh;}
+    .banner{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:20px;text-align:center;}
+    .banner h1{font-size:1.3rem;margin-bottom:4px;}
+    .banner p{font-size:0.85rem;opacity:0.85;}
+    .nav{display:flex;gap:10px;padding:12px 20px;background:#fff;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;align-items:center;}
+    .nav a{text-decoration:none;}
+    .nav button{padding:8px 18px;background:#fff;border:2px solid #667eea;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem;color:#667eea;}
+    .nav button:hover{background:#667eea10;}
+    .container{max-width:1200px;margin:0 auto;padding:20px;}
     .sub{font-size:11px;color:#6b7280;margin-bottom:12px;}
     table{width:100%;border-collapse:collapse;font-size:12px;}
     th{background:#1a56db;color:#fff;padding:8px 10px;text-align:left;font-weight:600;border:1px solid #1e40af;white-space:nowrap;}
@@ -23,8 +31,19 @@
 </style>
 </head>
 <body>
+<div class="banner">
+    <h1>安全标志图集管理系统</h1>
+    <p>场景清单导出</p>
+</div>
+<div class="nav">
+    <a href="/"><button>📋 场景列表</button></a>
+    <a href="workstations.html"><button>💼 工作岗位</button></a>
+    <a href="stats.html"><button>📊 数据统计</button></a>
+    <button style="background:#667eea;color:#fff;">📥 导出Excel</button>
+</div>
+<div class="container">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-    <div><h1 style="margin:0;">安全标志图集 — 场景清单</h1><div class="sub" id="subtitle" style="margin-bottom:0;"></div></div>
+    <div><h1 style="font-size:18px;color:#1e3a5f;margin:0;">场景清单</h1><div class="sub" id="subtitle" style="margin-bottom:0;"></div></div>
     <button id="downloadBtn" onclick="downloadExcel()" style="background:#059669;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">📥 下载Excel文件</button>
 </div>
 <table id="table">
@@ -91,5 +110,6 @@ function downloadExcel() {
     URL.revokeObjectURL(url);
 }
 </script>
+</div>
 </body>
 </html>

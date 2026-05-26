@@ -7,9 +7,14 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;background:#f5f7fa;color:#333;min-height:100vh;}
-.header{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
-.header h1{font-size:1.1rem;color:#1e3a5f;}
-.header a{color:#1a56db;text-decoration:none;font-size:0.85rem;}
+.banner{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:20px;text-align:center;margin-bottom:0;}
+.banner h1{font-size:1.3rem;margin-bottom:4px;}
+.banner p{font-size:0.85rem;opacity:0.85;}
+.nav{display:flex;gap:10px;padding:12px 20px;background:#fff;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;align-items:center;}
+.nav a{text-decoration:none;}
+.nav button{padding:8px 18px;background:#fff;border:2px solid #667eea;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem;color:#667eea;}
+.nav button:hover{background:#667eea10;}
+.nav .spacer{flex:1;}
 .container{max-width:1200px;margin:0 auto;padding:20px;}
 .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
 .toolbar .left{display:flex;gap:8px;align-items:center;}
@@ -39,9 +44,15 @@ tr:hover td{background:#f9fafb;}
 </style>
 </head>
 <body>
-<div class="header">
-    <h1>工作岗位管理</h1>
-    <a href="/">← 返回主页</a>
+<div class="banner">
+    <h1>安全标志图集管理系统</h1>
+    <p>工作岗位管理</p>
+</div>
+<div class="nav">
+    <a href="/"><button>📋 场景列表</button></a>
+    <button style="background:#667eea;color:#fff;">💼 工作岗位</button>
+    <a href="stats.html"><button>📊 数据统计</button></a>
+    <a href="export-scenes.html"><button>📥 导出Excel</button></a>
 </div>
 <div class="container">
     <div id="msg" class="msg"></div>
