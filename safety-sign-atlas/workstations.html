@@ -275,14 +275,12 @@ function toggleSelectAll(el){
 function generateBOM(){
     var checked=document.querySelectorAll('.ws-check:checked');
     if(!checked.length){showMsg('error','请先勾选至少一个工作岗位');return;}
-    // 收集选中岗位的场景ID（去重）
-    var sceneIds={};
-    checked.forEach(function(cb){sceneIds[cb.dataset.scene]=true;});
-    var ids=Object.keys(sceneIds);
-    // 加载各场景数据并汇总标志
+    // 为每个选中的岗位加载场景数据（不去重，共用场景按岗位数倍乘）
+    var fetches=[];
+    checked.forEach(function(cb){fetches.push(fetch(API+'/scenes/'+cb.dataset.scene).then(function(r){return r.json();}));});
     document.getElementById('bomContent').innerHTML='<div class=loading>正在生成物料清单...</div>';
     document.getElementById('bomModal').classList.add('active');
-    Promise.all(ids.map(function(sid){return fetch(API+'/scenes/'+sid).then(function(r){return r.json();});})).then(function(scenes){
+    Promise.all(fetches).then(function(scenes){
         var signMap={};
         scenes.forEach(function(scene){(scene.signs||[]).forEach(function(sg){
             // 用sign_code合并同类标志（同一编码的标志自动累加数量）
@@ -304,7 +302,8 @@ function generateBOM(){
         html+='</tbody></table>';
         document.getElementById('bomContent').innerHTML=html;
         document.getElementById('bomCount').textContent=checked.length;
-        document.getElementById('bomSceneCount').textContent=ids.length;
+        var sceneSet={};checked.forEach(function(cb){sceneSet[cb.dataset.scene]=true;});
+        document.getElementById('bomSceneCount').textContent=Object.keys(sceneSet).length;
     }).catch(function(e){document.getElementById('bomContent').innerHTML='<div style=color:#dc3545;>加载失败: '+e.message+'</div>';});
 }
 
