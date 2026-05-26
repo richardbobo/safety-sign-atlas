@@ -1886,8 +1886,7 @@ function showSceneDetailModal(scene) {
                 '<div style="font-size:0.8rem;color:#6b7280;margin-top:2px;">'+scene.scene_code+' | '+scene.department+'</div></div>'+
                 '<div style="display:flex;gap:6px;">'+
                     '<button onclick="closeSceneDetailModal();addSignsToScene('+scene.id+',\''+scene.scene_name.replace(/'/g,"\\'")+'\',\''+scene.scene_code+'\')" style="background:#1a56db;color:#fff;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:600;">➕ 添加标志</button>'+
-                    '<button onclick="exportSceneToPDF('+scene.id+')" style="background:#059669;color:#fff;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:600;">📄 打印页面</button>'+
-                    '<button onclick="closeSceneDetailModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#6b7280;padding:0 4px;">&times;</button>'+
+                                        '<button onclick="closeSceneDetailModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#6b7280;padding:0 4px;">&times;</button>'+
                 '</div>'+
             '</div>'+
 

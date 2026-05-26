@@ -624,14 +624,14 @@ app.get('/api/workstations', (req, res) => {
 // 获取单个岗位
 // 获取下一个岗位编码（必须在 /:id 之前注册）
 app.get('/api/workstations/next-code', (req, res) => {
-    db.get('SELECT MAX(workstation_code) as max_code FROM workstations', (err, result) => {
+    db.all('SELECT workstation_code FROM workstations', (err, rows) => {
         if (err) { res.status(500).json({ error: err.message }); return; }
-        var next = 1;
-        if (result && result.max_code) {
-            var m = result.max_code.match(/WS-(\d+)/);
-            if (m) next = parseInt(m[1]) + 1;
-        }
-        res.json({ next_code: 'WS-' + String(next).padStart(3, '0') });
+        var maxNum = 0;
+        (rows || []).forEach(function(r) {
+            var m = (r.workstation_code || '').match(/^WS-(\d+)$/);
+            if (m) { var n = parseInt(m[1]); if (n > maxNum) maxNum = n; }
+        });
+        res.json({ next_code: 'WS-' + String(maxNum + 1).padStart(3, '0') });
     });
 });
 
