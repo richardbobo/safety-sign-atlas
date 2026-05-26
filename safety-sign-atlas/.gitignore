@@ -4,7 +4,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Database\n*.db\n*.db.backup\n
+# Database
+*.db
+*.db.backup
 
 # Temporary files
 *.backup
