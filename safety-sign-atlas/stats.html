@@ -51,9 +51,10 @@ function bar(c, w, cls) {
 Promise.all([
     fetch(API+'/scenes').then(function(r){return r.json();}),
     fetch(API+'/signs').then(function(r){return r.json();}),
-    fetch(API+'/custom-hazard-tags').then(function(r){return r.json();}).catch(function(){return[];})
+    fetch(API+'/custom-hazard-tags').then(function(r){return r.json();}).catch(function(){return[];}),
+    fetch(API+'/workstations').then(function(r){return r.json();}).catch(function(){return[];})
 ]).then(function(results){
-    var scenes=results[0], signs=results[1], customTags=results[2];
+    var scenes=results[0], signs=results[1], customTags=results[2], workstations=results[3];
 
     // Tag name resolution
     var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
@@ -145,6 +146,7 @@ Promise.all([
             '<div class=card><div class=num>'+signs.length+'</div><div class=label>标志库总数</div></div>'+
             '<div class=card><div class=num>'+totalSignsInScenes+'</div><div class=label>已配置标志</div></div>'+
             '<div class=card><div class=num>'+Object.keys(deptMap).length+'</div><div class=label>涉及部门</div></div>'+
+            '<div class=card style="grid-column:span 2;"><div class=num>'+workstations.length+'</div><div class=label>工作岗位总数</div></div>'+
         '</div>'+
 
         '<div class=charts>'+

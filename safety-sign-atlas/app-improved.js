@@ -1899,6 +1899,12 @@ function showSceneDetailModal(scene) {
                         '• 保持标志清洁、无遮挡，定期检查完整性<br>'+
                         '• PPE标志设在更衣室入口、PPE存放处等位置'+
                     '</div>'+
+                    // 关联岗位
+                    (scene.workstations&&scene.workstations.length>0 ?
+                        '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;margin-top:10px;font-size:0.75rem;">'+
+                        '<div style="font-weight:600;color:#1e3a5f;margin-bottom:6px;">💼 关联岗位 ('+scene.workstations.length+')</div>'+
+                        scene.workstations.map(function(w){return '<span style="display:inline-block;background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;margin:2px 4px;font-size:0.7rem;">'+w.workstation_code+' '+w.workstation_name+'</span>';}).join('')+
+                        '</div>' : '')+
                 '</div>'+
             '</div>'+
 

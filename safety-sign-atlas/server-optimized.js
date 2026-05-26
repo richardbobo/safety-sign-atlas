@@ -94,6 +94,13 @@ async function migrateJsonDataIfNeeded() {
             }
             console.log('迁移', tags.length, '个标签');
         }
+        // 工作岗位迁移：为每个场景创建默认岗位
+        const wc = await getSql('SELECT COUNT(*) as c FROM workstations');
+        if (wc.c === 0) {
+            await runSql(`INSERT INTO workstations (workstation_code, workstation_name, scene_id, department)
+                SELECT 'WS-' || printf('%03d', id), scene_name, id, department FROM scenes_new`);
+            console.log('已为现有场景创建默认工作岗位');
+        }
     } catch (e) { console.error('数据迁移失败:', e.message); }
 }
 
@@ -104,8 +111,11 @@ function initializeDatabase() {
     db.run('CREATE TABLE IF NOT EXISTS scenes_new (id INTEGER PRIMARY KEY AUTOINCREMENT, scene_code TEXT NOT NULL UNIQUE, scene_name TEXT NOT NULL, department TEXT NOT NULL, hazard_tags TEXT, location_description TEXT, installation_notes TEXT, scene_image_url TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
     db.run('CREATE TABLE IF NOT EXISTS sign_library (id INTEGER PRIMARY KEY AUTOINCREMENT, sign_code TEXT NOT NULL UNIQUE, sign_name TEXT NOT NULL, sign_type TEXT NOT NULL CHECK(sign_type IN (\'warning\',\'prohibition\',\'instruction\',\'information\')), color_scheme TEXT NOT NULL, standard_size TEXT NOT NULL, material TEXT NOT NULL, description TEXT, image_url TEXT, is_ppe INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
     db.run('CREATE TABLE IF NOT EXISTS scene_signs (id INTEGER PRIMARY KEY AUTOINCREMENT, scene_id INTEGER NOT NULL, sign_id INTEGER NOT NULL, display_order INTEGER NOT NULL, installation_height TEXT, observation_distance TEXT, special_requirements TEXT, added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (scene_id) REFERENCES scenes_new(id) ON DELETE CASCADE, FOREIGN KEY (sign_id) REFERENCES sign_library(id) ON DELETE CASCADE, UNIQUE(scene_id, sign_id, display_order))');
-    db.run('CREATE TABLE IF NOT EXISTS custom_hazard_tags (id INTEGER PRIMARY KEY AUTOINCREMENT, tag_id TEXT NOT NULL UNIQUE, tag_name TEXT NOT NULL, color TEXT DEFAULT \'#a78bfa\', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)', (err) => {
-        if (err) { console.error('custom_hazard_tags init failed:', err.message); return; }
+    db.run('CREATE TABLE IF NOT EXISTS custom_hazard_tags (id INTEGER PRIMARY KEY AUTOINCREMENT, tag_id TEXT NOT NULL UNIQUE, tag_name TEXT NOT NULL, color TEXT DEFAULT \'#a78bfa\', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
+    db.run('CREATE TABLE IF NOT EXISTS workstations (id INTEGER PRIMARY KEY AUTOINCREMENT, workstation_code TEXT NOT NULL UNIQUE, workstation_name TEXT NOT NULL, scene_id INTEGER NOT NULL, department TEXT, location TEXT, notes TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (scene_id) REFERENCES scenes_new(id) ON DELETE RESTRICT)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_workstations_scene ON workstations(scene_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_workstations_dept ON workstations(department)', (err) => {
+        if (err) { console.error('index creation failed:', err.message); return; }
         migrateJsonDataIfNeeded();
     });
     });
@@ -394,10 +404,11 @@ app.get('/api/scenes/:id', (req, res) => {
                 res.status(500).json({ error: err.message });
                 return;
             }
-            
-            res.json({
-                ...scene,
-                signs: signs
+
+            // 获取该场景下的工作岗位
+            db.all('SELECT id, workstation_code, workstation_name FROM workstations WHERE scene_id = ?', [sceneId], (err, workstations) => {
+                if (err) { workstations = []; }
+                res.json({ ...scene, signs: signs, workstations: workstations || [] });
             });
         });
     });
@@ -515,35 +526,30 @@ app.post('/api/scenes/:id/upload-image', upload.single('scene_image'), (req, res
 app.delete('/api/scenes/:id', (req, res) => {
     const sceneId = req.params.id;
     
-    // 首先检查场景是否存在
-    db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
+    // 检查是否有关联岗位
+    db.get('SELECT COUNT(*) as cnt FROM workstations WHERE scene_id = ?', [sceneId], (wsErr, wsRow) => {
+        if (wsErr) { res.status(500).json({ error: wsErr.message }); return; }
+        if (wsRow && wsRow.cnt > 0) {
+            res.status(400).json({ error: '该场景下有'+wsRow.cnt+'个关联岗位，请先移除岗位后再删除场景' });
             return;
         }
-        
-        if (!scene) {
-            res.status(404).json({ error: '场景不存在' });
-            return;
-        }
-        
-        // 删除场景（关联的scene_signs记录会自动级联删除）
-        const deleteSql = 'DELETE FROM scenes_new WHERE id = ?';
-        db.run(deleteSql, [sceneId], function(err) {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            
-            res.json({
-                success: true,
-                message: '场景删除成功',
-                deletedId: sceneId,
-                rowsAffected: this.changes
+
+        // 检查场景是否存在
+        db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
+            if (err) { res.status(500).json({ error: err.message }); return; }
+            if (!scene) { res.status(404).json({ error: '场景不存在' }); return; }
+
+            // 删除场景（关联的scene_signs记录会自动级联删除）
+            db.run('DELETE FROM scenes_new WHERE id = ?', [sceneId], function(err) {
+                if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                }
+                res.json({ success: true, message: '场景删除成功', deletedId: sceneId, rowsAffected: this.changes });
             });
         });
+        });
     });
-});
 
 // 为场景添加标志
 app.post('/api/scenes/:id/signs', (req, res) => {
@@ -588,6 +594,78 @@ app.delete('/api/scene-signs/:id', (req, res) => {
             if (err) { res.status(500).json({ error: err.message }); return; }
             res.json({ success: true, message: '标志已从场景移除', deletedId: relationId });
         });
+    });
+});
+
+// ==================== 工作岗位管理API ====================
+
+// 获取所有岗位（支持按scene_id和department筛选）
+app.get('/api/workstations', (req, res) => {
+    var sql = `SELECT w.*, s.scene_name, s.scene_code,
+        (SELECT COUNT(*) FROM scene_signs ss WHERE ss.scene_id = w.scene_id) as sign_count
+        FROM workstations w
+        LEFT JOIN scenes_new s ON w.scene_id = s.id WHERE 1=1`;
+    var params = [];
+    if (req.query.scene_id) { sql += ' AND w.scene_id = ?'; params.push(req.query.scene_id); }
+    if (req.query.department) { sql += ' AND w.department = ?'; params.push(req.query.department); }
+    sql += ' ORDER BY w.workstation_code';
+    db.all(sql, params, (err, rows) => {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        res.json(rows);
+    });
+});
+
+// 获取单个岗位
+app.get('/api/workstations/:id', (req, res) => {
+    db.get('SELECT w.*, s.scene_name, s.scene_code FROM workstations w LEFT JOIN scenes_new s ON w.scene_id = s.id WHERE w.id = ?', [req.params.id], (err, row) => {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (!row) { res.status(404).json({ error: '岗位不存在' }); return; }
+        res.json(row);
+    });
+});
+
+// 创建岗位
+app.post('/api/workstations', (req, res) => {
+    var { workstation_code, workstation_name, scene_id, department, location, notes } = req.body;
+    if (!workstation_code || !workstation_name || !scene_id) {
+        res.status(400).json({ error: '岗位编码、名称和场景ID为必填项' }); return;
+    }
+    db.run('INSERT INTO workstations (workstation_code, workstation_name, scene_id, department, location, notes) VALUES (?,?,?,?,?,?)',
+        [workstation_code, workstation_name, scene_id, department||'', location||'', notes||''], function(err) {
+        if (err) {
+            if (err.code === 'SQLITE_CONSTRAINT') { res.status(409).json({ error: '岗位编码已存在或场景不存在' }); return; }
+            res.status(500).json({ error: err.message }); return;
+        }
+        res.json({ id: this.lastID, message: '岗位创建成功' });
+    });
+});
+
+// 更新岗位
+app.put('/api/workstations/:id', (req, res) => {
+    var { workstation_code, workstation_name, scene_id, department, location, notes } = req.body;
+    var fields = [], vals = [];
+    if (workstation_code !== undefined) { fields.push('workstation_code = ?'); vals.push(workstation_code); }
+    if (workstation_name !== undefined) { fields.push('workstation_name = ?'); vals.push(workstation_name); }
+    if (scene_id !== undefined) { fields.push('scene_id = ?'); vals.push(scene_id); }
+    if (department !== undefined) { fields.push('department = ?'); vals.push(department); }
+    if (location !== undefined) { fields.push('location = ?'); vals.push(location); }
+    if (notes !== undefined) { fields.push('notes = ?'); vals.push(notes); }
+    if (!fields.length) { res.status(400).json({ error: '没有要更新的字段' }); return; }
+    fields.push('updated_at = CURRENT_TIMESTAMP');
+    vals.push(req.params.id);
+    db.run('UPDATE workstations SET '+fields.join(',')+' WHERE id = ?', vals, function(err) {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (!this.changes) { res.status(404).json({ error: '岗位不存在' }); return; }
+        res.json({ success: true, message: '岗位更新成功' });
+    });
+});
+
+// 删除岗位
+app.delete('/api/workstations/:id', (req, res) => {
+    db.run('DELETE FROM workstations WHERE id = ?', [req.params.id], function(err) {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (!this.changes) { res.status(404).json({ error: '岗位不存在' }); return; }
+        res.json({ success: true, message: '岗位删除成功' });
     });
 });
 
