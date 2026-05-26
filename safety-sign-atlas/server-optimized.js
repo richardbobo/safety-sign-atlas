@@ -622,15 +622,7 @@ app.get('/api/workstations', (req, res) => {
 });
 
 // 获取单个岗位
-app.get('/api/workstations/:id', (req, res) => {
-    db.get('SELECT w.*, s.scene_name, s.scene_code FROM workstations w LEFT JOIN scenes_new s ON w.scene_id = s.id WHERE w.id = ?', [req.params.id], (err, row) => {
-        if (err) { res.status(500).json({ error: err.message }); return; }
-        if (!row) { res.status(404).json({ error: '岗位不存在' }); return; }
-        res.json(row);
-    });
-});
-
-// 获取下一个岗位编码
+// 获取下一个岗位编码（必须在 /:id 之前注册）
 app.get('/api/workstations/next-code', (req, res) => {
     db.get('SELECT MAX(workstation_code) as max_code FROM workstations', (err, result) => {
         if (err) { res.status(500).json({ error: err.message }); return; }
@@ -640,6 +632,14 @@ app.get('/api/workstations/next-code', (req, res) => {
             if (m) next = parseInt(m[1]) + 1;
         }
         res.json({ next_code: 'WS-' + String(next).padStart(3, '0') });
+    });
+});
+
+app.get('/api/workstations/:id', (req, res) => {
+    db.get('SELECT w.*, s.scene_name, s.scene_code FROM workstations w LEFT JOIN scenes_new s ON w.scene_id = s.id WHERE w.id = ?', [req.params.id], (err, row) => {
+        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (!row) { res.status(404).json({ error: '岗位不存在' }); return; }
+        res.json(row);
     });
 });
 
