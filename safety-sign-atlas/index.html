@@ -390,7 +390,6 @@
     
     <div class="nav">
         <button onclick="showPage('sign-library')">🏷️ 标志图集</button>
-        <button onclick="showPage('create-scene')">➕ 创建场景</button>
         <button class="active" onclick="showPage('scene-list')">📋 场景列表</button>
         <a href="workstations.html" style="text-decoration:none;"><button>💼 工作岗位</button></a>
         <a href="stats.html" style="text-decoration:none;"><button>📊 数据统计</button></a>
@@ -674,7 +673,10 @@
                 <input type="text" id="scene-search-input" placeholder="🔍 搜索场景..." oninput="filterScenes()"
                        style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem;width:160px;">
             </div>
-            <button onclick="window.open('export-scenes.html','_blank')" style="background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">📥 导出Excel</button>
+            <div style="display:flex;gap:8px;">
+                <button onclick="showPage('create-scene')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.85rem;">➕ 创建场景</button>
+                <button onclick="window.open('export-scenes.html','_blank')" style="background:#059669;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">📥 导出Excel</button>
+            </div>
         </div>
         <div id="scenes-container">
             <div class="loading">加载场景列表...</div>
