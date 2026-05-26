@@ -67,66 +67,93 @@ Promise.all([
     // Totals
     var totalSignsInScenes=0;
     scenes.forEach(function(s){totalSignsInScenes+=(s.sign_count||0);});
+    var typeNames={warning:'警告',prohibition:'禁止',instruction:'指令',information:'提示'};
 
-    // Department stats
+    // Build scene lookup map
+    var sceneMap={};
+    scenes.forEach(function(s){sceneMap[s.id]=s;});
+
+    // Department stats: count workstations by department
     var deptMap={};
-    scenes.forEach(function(s){
-        var d=s.department||'未分配';
-        if(!deptMap[d]) deptMap[d]={scenes:0,signs:0};
-        deptMap[d].scenes++;
-        deptMap[d].signs+=(s.sign_count||0);
+    workstations.forEach(function(w){
+        var d=w.department||'未分配';
+        if(!deptMap[d]) deptMap[d]={workstations:0,signs:0,scenes:new Set()};
+        deptMap[d].workstations++;
+        deptMap[d].scenes.add(w.scene_id);
+        var scene=sceneMap[w.scene_id];
+        if(scene) deptMap[d].signs+=(scene.sign_count||0);
     });
     var deptRows='';
     var maxDept=0;
-    Object.values(deptMap).forEach(function(v){if(v.scenes>maxDept)maxDept=v.scenes;});
-    Object.entries(deptMap).sort(function(a,b){return b[1].scenes-a[1].scenes;}).forEach(function(e){
-        deptRows+='<tr><td>'+e[0]+'</td><td>'+e[1].scenes+'</td><td>'+e[1].signs+'</td><td>'+bar('',e[1].scenes,'')+'</td></tr>';
+    Object.values(deptMap).forEach(function(v){if(v.workstations>maxDept)maxDept=v.workstations;});
+    Object.entries(deptMap).sort(function(a,b){return b[1].workstations-a[1].workstations;}).forEach(function(e){
+        deptRows+='<tr><td>'+e[0]+'</td><td>'+e[1].workstations+'</td><td>'+e[1].scenes.size+'</td><td>'+e[1].signs+'</td><td>'+bar('',e[1].workstations,'')+'</td></tr>';
     });
 
-    // Hazard tag stats
+    // Hazard tag stats: count workstations by tag (via scene)
     var hazardMap={};
-    scenes.forEach(function(s){
-        if(s.hazard_tags){
-            s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){
+    workstations.forEach(function(w){
+        var scene=sceneMap[w.scene_id];
+        if(scene&&scene.hazard_tags){
+            var seen={};
+            scene.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){
                 var tid=t.trim();
-                if(!hazardMap[tid]) hazardMap[tid]=0;
-                hazardMap[tid]++;
+                if(!seen[tid]){ seen[tid]=true; if(!hazardMap[tid]) hazardMap[tid]=0; hazardMap[tid]++; }
             });
         }
     });
     var hazardRows='';
     Object.entries(hazardMap).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){
         var n=tagName(e[0]), c=tagColor(e[0]);
-        hazardRows+='<tr><td><span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span></td><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>';
+        hazardRows+='<tr><td><span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span></td><td>'+e[0]+'</td><td>'+e[1]+'岗位</td></tr>';
     });
 
-    // Sign library type distribution
-    var libMap={warning:0,prohibition:0,instruction:0,information:0};
-    signs.forEach(function(s){if(libMap[s.sign_type]!==undefined) libMap[s.sign_type]++;});
-    var typeNames={warning:'警告',prohibition:'禁止',instruction:'指令',information:'提示'};
-    var maxLib=Math.max.apply(null,Object.values(libMap))||1;
-    var libRows='';
-    Object.entries(libMap).forEach(function(e){
-        libRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxLib*100),e[0])+'</td></tr>';
-    });
-
-    // Scene-configured sign type distribution
+    // Sign type distribution: across workstations' scenes (deduped by scene)
     var configuredMap={warning:0,prohibition:0,instruction:0,information:0};
-    scenes.forEach(function(s){(s.signs||[]).forEach(function(sg){if(configuredMap[sg.sign_type]!==undefined) configuredMap[sg.sign_type]++;});});
+    var countedScenes={};
+    workstations.forEach(function(w){
+        if(countedScenes[w.scene_id]) return;
+        countedScenes[w.scene_id]=true;
+        var scene=sceneMap[w.scene_id];
+        if(scene){(scene.signs||[]).forEach(function(sg){if(configuredMap[sg.sign_type]!==undefined) configuredMap[sg.sign_type]++;});}
+    });
     var maxCfg=Math.max.apply(null,Object.values(configuredMap))||1;
     var cfgRows='';
     Object.entries(configuredMap).forEach(function(e){
         cfgRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxCfg*100),e[0])+'</td></tr>';
     });
 
-    // Sign usage stats: count each sign across all scenes
+    // Sign library counts (for reference)
+    var libMap={warning:0,prohibition:0,instruction:0,information:0};
+    signs.forEach(function(s){if(libMap[s.sign_type]!==undefined) libMap[s.sign_type]++;});
+    var maxLib=Math.max.apply(null,Object.values(libMap))||1;
+    var libRows='';
+    Object.entries(libMap).forEach(function(e){
+        libRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxLib*100),e[0])+'</td></tr>';
+    });
+
+    // Sign usage: count by workstation coverage
     var signUsage={};
-    scenes.forEach(function(s){
-        (s.signs||[]).forEach(function(sg){
+    var countedWsScenes={};
+    workstations.forEach(function(w){
+        if(countedWsScenes[w.scene_id]) return;
+        countedWsScenes[w.scene_id]=true;
+        var scene=sceneMap[w.scene_id];
+        if(!scene) return;
+        (scene.signs||[]).forEach(function(sg){
             var key=sg.sign_name||sg.sign_code;
-            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,image_url:sg.image_url,count:0,scenes:new Set()};
+            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,image_url:sg.image_url,count:0,workstations:0};
             signUsage[key].count++;
-            signUsage[key].scenes.add(s.id);
+        });
+    });
+    // Count workstations per sign
+    workstations.forEach(function(w){
+        var scene=sceneMap[w.scene_id];
+        if(!scene) return;
+        var counted={};
+        (scene.signs||[]).forEach(function(sg){
+            var key=sg.sign_name||sg.sign_code;
+            if(!counted[key]){ counted[key]=true; if(signUsage[key]) signUsage[key].workstations++; }
         });
     });
     var signUsageArr=Object.values(signUsage).sort(function(a,b){return b.count-a.count;});
@@ -134,32 +161,28 @@ Promise.all([
     var usageRows='';
     signUsageArr.forEach(function(u,i){
         var imgTag=u.image_url?'<img src="'+u.image_url+'" style="width:40px;height:40px;object-fit:contain;border-radius:4px;background:#f9fafb;border:1px solid #e5e7eb;" onerror="this.style.display=\'none\'">':'';
-        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+u.name+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+u.code+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.scenes.size+'个场景</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
+        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+u.name+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+u.code+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.workstations+'个岗位</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
     });
-
-    // Scene with most signs
-    var topScenes=scenes.slice().sort(function(a,b){return(b.sign_count||0)-(a.sign_count||0);}).slice(0,10);
 
     var html=
         '<div class=cards>'+
             '<div class=card><div class=num>'+scenes.length+'</div><div class=label>场景总数</div></div>'+
+            '<div class=card><div class=num>'+workstations.length+'</div><div class=label>工作岗位总数</div></div>'+
             '<div class=card><div class=num>'+signs.length+'</div><div class=label>标志库总数</div></div>'+
             '<div class=card><div class=num>'+totalSignsInScenes+'</div><div class=label>已配置标志</div></div>'+
-            '<div class=card><div class=num>'+Object.keys(deptMap).length+'</div><div class=label>涉及部门</div></div>'+
-            '<div class=card style="grid-column:span 2;"><div class=num>'+workstations.length+'</div><div class=label>工作岗位总数</div></div>'+
         '</div>'+
 
         '<div class=charts>'+
-            '<div class=section><h2>按部门统计</h2><table><thead><tr><th>部门</th><th>场景数</th><th>标志数</th><th>占比</th></tr></thead><tbody>'+deptRows+'</tbody></table></div>'+
-            '<div class=section><h2>按危险源统计</h2><table><thead><tr><th>标签</th><th>ID</th><th>场景数</th></tr></thead><tbody>'+(hazardRows||'<tr><td colspan=3>暂无数据</td></tr>')+'</tbody></table></div>'+
+            '<div class=section><h2>按部门统计（工作岗位）</h2><table><thead><tr><th>部门</th><th>岗位数</th><th>覆盖场景</th><th>配置标志</th><th>占比</th></tr></thead><tbody>'+deptRows+'</tbody></table></div>'+
+            '<div class=section><h2>按危险源统计（工作岗位）</h2><table><thead><tr><th>标签</th><th>ID</th><th>岗位数</th></tr></thead><tbody>'+(hazardRows||'<tr><td colspan=3>暂无数据</td></tr>')+'</tbody></table></div>'+
         '</div>'+
 
         '<div class=charts>'+
             '<div class=section><h2>标志库类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+libRows+'</tbody></table></div>'+
-            '<div class=section><h2>场景已配置标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+cfgRows+'</tbody></table></div>'+
+            '<div class=section><h2>工作岗位已配置标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+cfgRows+'</tbody></table></div>'+
         '</div>'+
 
-        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>缩略图</th><th>标志名称</th><th>类型</th><th>使用数量</th><th>覆盖场景</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=7>暂无数据</td></tr>')+'</tbody></table></div>'+
+        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>缩略图</th><th>标志名称</th><th>类型</th><th>使用数量</th><th>覆盖岗位</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=7>暂无数据</td></tr>')+'</tbody></table></div>'+
 
         '<div class=charts>'+
             '<div class=section><h2>标志最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>标志数</th></tr></thead><tbody>'+
