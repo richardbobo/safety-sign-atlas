@@ -285,6 +285,7 @@ function generateBOM(){
     Promise.all(ids.map(function(sid){return fetch(API+'/scenes/'+sid).then(function(r){return r.json();});})).then(function(scenes){
         var signMap={};
         scenes.forEach(function(scene){(scene.signs||[]).forEach(function(sg){
+            // 用sign_code合并同类标志（同一编码的标志自动累加数量）
             var key=sg.sign_code||sg.sign_name;
             if(!signMap[key]) signMap[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,image_url:sg.image_url,count:0};
             signMap[key].count++;
