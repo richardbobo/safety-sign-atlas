@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
+const XLSX = require('xlsx');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8000;
@@ -597,6 +598,27 @@ app.get('/api/workstations/next-code', (req, res) => {
     });
 });
 
+// 下载导入模板
+app.get('/api/workstations/template', (req, res) => {
+    const headers = ['名称', '具体位置', '部门', '关联场景编码', '编号', '责任人', '作业周期', '容积', '深度', '入口数量'];
+    const ws = XLSX.utils.aoa_to_sheet([
+        ['工作岗位导入模板 — 带 * 列为必填'],
+        headers,
+        ['示例：PVC烘房燃烧炉膛', '主车间14米J8立柱', 'PFA3P', 'SCENE-PFA3P', 'YX-001', '张三', '每月', '30', '10', '1']
+    ]);
+    ws['!cols'] = headers.map((h, i) => {
+        if (h === '名称') return { wch: 28 };
+        if (h === '具体位置') return { wch: 24 };
+        return { wch: 16 };
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="workstation-template.xlsx"');
+    res.send(buf);
+});
+
 app.get('/api/workstations/:id', (req, res) => {
     db.get('SELECT w.*, s.scene_name, s.scene_code FROM workstations w LEFT JOIN scenes_new s ON w.scene_id = s.id WHERE w.id = ?', [req.params.id], (err, row) => {
         if (err) { res.status(500).json({ error: '服务器错误' }); return; }
@@ -618,6 +640,165 @@ app.post('/api/workstations', (req, res) => {
             res.status(500).json({ error: '服务器错误' }); return;
         }
         res.json({ id: this.lastID, message: '岗位创建成功' });
+    });
+});
+
+// ==================== Excel 批量导入 ====================
+
+const xlsxUpload = multer({
+    storage: multer.diskStorage({
+        destination: './uploads/',
+        filename: (req, file, cb) => cb(null, 'import_' + Date.now() + '.xlsx')
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const validMimes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel'];
+        const validExt = /\.xlsx?$/i.test(file.originalname);
+        if (validMimes.includes(file.mimetype) || validExt) {
+            cb(null, true);
+        } else {
+            cb(new Error('仅支持 .xlsx 格式的Excel文件'));
+        }
+    }
+});
+
+app.post('/api/workstations/import', (req, res) => {
+    xlsxUpload.single('file')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: '文件大小不能超过10MB' });
+            return res.status(400).json({ error: err.message || '文件上传失败' });
+        }
+        if (!req.file) return res.status(400).json({ error: '请选择要上传的Excel文件' });
+
+        let wb;
+        try {
+            wb = XLSX.readFile(req.file.path);
+        } catch (e) {
+            try { fs.unlinkSync(req.file.path); } catch (_) {}
+            return res.status(400).json({ error: '无法解析Excel文件，请确认文件格式正确' });
+        }
+
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        // locate header row (find row containing '名称' and '具体位置')
+        let headerRow = -1;
+        let header = [];
+        for (let i = 0; i < Math.min(rows.length, 5); i++) {
+            const r = rows[i];
+            if (!r || !r.length) continue;
+            const hasName = r.some(c => c && String(c).includes('名称'));
+            const hasLoc = r.some(c => c && String(c).includes('具体位置'));
+            if (hasName && hasLoc) { headerRow = i; header = r; break; }
+        }
+        if (headerRow < 0) {
+            try { fs.unlinkSync(req.file.path); } catch (_) {}
+            return res.status(400).json({ error: '未找到表头行，请确认模板包含"名称"和"具体位置"列' });
+        }
+
+        const colIdx = name => header.findIndex(h => h && String(h).includes(name));
+
+        const nameIdx = colIdx('名称');
+        const locIdx = colIdx('具体位置');
+        const deptIdx = colIdx('部门');
+        const sceneCodeIdx = colIdx('关联场景编码');
+        const codeIdx = colIdx('编号');
+        const personIdx = colIdx('责任人');
+        const cycleIdx = colIdx('作业周期');
+        const volumeIdx = colIdx('容积');
+        const depthIdx = colIdx('深度');
+        const entranceIdx = colIdx('入口数量');
+
+        // collect all scene codes and resolve them
+        const sceneCodes = new Set();
+        const dataRows = [];
+        for (let i = headerRow + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || !row[nameIdx] || !String(row[nameIdx]).trim()) continue;
+            const sc = sceneCodeIdx >= 0 ? String(row[sceneCodeIdx] || '').trim() : '';
+            if (sc) sceneCodes.add(sc);
+            dataRows.push({ row, name: String(row[nameIdx]).trim(),
+                location: locIdx >= 0 ? String(row[locIdx]).trim() : '',
+                department: deptIdx >= 0 ? String(row[deptIdx]).trim() : '',
+                sceneCode: sc });
+        }
+
+        if (!dataRows.length) {
+            try { fs.unlinkSync(req.file.path); } catch (_) {}
+            return res.status(400).json({ error: '未找到有效数据行，请确认"名称"列已填写' });
+        }
+
+        // resolve scene codes to IDs
+        const sceneIds = {};
+        const resolveScenes = () => new Promise((resolve, reject) => {
+            if (!sceneCodes.size) { resolve(); return; }
+            const codes = Array.from(sceneCodes);
+            const placeholders = codes.map(() => '?').join(',');
+            db.all('SELECT id, scene_code FROM scenes_new WHERE scene_code IN (' + placeholders + ')', codes, (e, scenes) => {
+                if (e) return reject(e);
+                (scenes || []).forEach(s => { sceneIds[s.scene_code] = s.id; });
+                resolve();
+            });
+        });
+
+        resolveScenes().then(() => {
+            const errors = [];
+            let pending = dataRows.length;
+            let success = 0, fail = 0;
+
+            if (!pending) {
+                try { fs.unlinkSync(req.file.path); } catch (_) {}
+                return res.json({ success: 0, fail: 0, errors: [] });
+            }
+
+            function checkDone() {
+                if (--pending > 0) return;
+                try { fs.unlinkSync(req.file.path); } catch (_) {}
+                res.json({ success, fail, errors });
+            }
+
+            dataRows.forEach((d, idx) => {
+                const sceneId = sceneIds[d.sceneCode];
+                if (!sceneId) {
+                    fail++;
+                    errors.push('第' + (idx + 2) + '行: 场景编码"' + d.sceneCode + '"不存在，请先创建场景');
+                    checkDone();
+                    return;
+                }
+
+                // build notes from optional columns
+                const notesParts = [];
+                if (codeIdx >= 0 && String(d.row[codeIdx]).trim()) notesParts.push('编号: ' + String(d.row[codeIdx]).trim());
+                if (personIdx >= 0 && String(d.row[personIdx]).trim()) notesParts.push('责任人: ' + String(d.row[personIdx]).trim());
+                if (cycleIdx >= 0 && String(d.row[cycleIdx]).trim()) notesParts.push('作业周期: ' + String(d.row[cycleIdx]).trim());
+                if (volumeIdx >= 0 && String(d.row[volumeIdx]).trim()) notesParts.push('容积: ' + String(d.row[volumeIdx]).trim() + '立方米');
+                if (depthIdx >= 0 && String(d.row[depthIdx]).trim()) notesParts.push('深度: ' + String(d.row[depthIdx]).trim() + '米');
+                if (entranceIdx >= 0 && String(d.row[entranceIdx]).trim()) notesParts.push('入口数量: ' + String(d.row[entranceIdx]).trim());
+
+                // generate code
+                const wsCode = 'WS-' + (d.department || 'IMP') + '-' + String(idx + 1).padStart(3, '0');
+
+                db.run('INSERT INTO workstations (workstation_code, workstation_name, scene_id, department, location, notes) VALUES (?,?,?,?,?,?)',
+                    [wsCode, d.name, sceneId, d.department, d.location, notesParts.join(' | ')],
+                    function(insErr) {
+                        if (insErr) {
+                            fail++;
+                            if (insErr.code === 'SQLITE_CONSTRAINT') {
+                                errors.push('第' + (idx + 2) + '行: 岗位编码冲突或场景不存在');
+                            } else {
+                                errors.push('第' + (idx + 2) + '行: 导入失败');
+                            }
+                        } else {
+                            success++;
+                        }
+                        checkDone();
+                    });
+            });
+        }).catch(e => {
+            try { fs.unlinkSync(req.file.path); } catch (_) {}
+            res.status(500).json({ error: '导入过程出错' });
+        });
     });
 });
 
