@@ -240,7 +240,8 @@ function viewWorkstationScene(wsId, sceneId){
         fetch(API+'/scenes/'+sceneId).then(function(r){return r.json();})
     ]).then(function(results){
         var ws=results[0], scene=results[1];
-        var signs=scene.signs||[];
+        scene.signs = sortSignsByType(scene.signs || []);
+        var signs=scene.signs;
         var signImgs=signs.map(function(sg){
             return sg.image_url?'<img src="'+sg.image_url+'" style="width:60px;height:60px;object-fit:contain;border:1px solid #e5e7eb;border-radius:4px;margin:2px;" title="'+sg.sign_name+'" loading="lazy">':'';
         }).filter(Boolean).join('');
@@ -316,6 +317,14 @@ function downloadBOM(){
     a.href=URL.createObjectURL(blob);
     a.download='安全标志物料清单.xls';
     document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+function sortSignsByType(signs) {
+    if (!signs || !Array.isArray(signs)) return [];
+    var typeOrder = { warning: 1, prohibition: 2, instruction: 3, information: 4 };
+    return signs.slice().sort(function(a, b) {
+        return (typeOrder[a.sign_type] || 99) - (typeOrder[b.sign_type] || 99);
+    });
 }
 
 loadScenes(); loadWorkstations();
