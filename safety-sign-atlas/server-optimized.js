@@ -591,7 +591,10 @@ app.get('/api/workstations/next-code', (req, res) => {
         if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         var maxNum = 0;
         (rows || []).forEach(function(r) {
-            var m = (r.workstation_code || '').match(/^WS-(\d+)$/);
+            var code = r.workstation_code || '';
+            // match both WS-XXX and WS-XXXX-XXX formats, take the last numeric part
+            var m = code.match(/^WS-(\d+)$/);
+            if (!m) m = code.match(/-(\d+)$/);
             if (m) { var n = parseInt(m[1]); if (n > maxNum) maxNum = n; }
         });
         res.json({ next_code: 'WS-' + String(maxNum + 1).padStart(3, '0') });
@@ -743,30 +746,23 @@ app.post('/api/workstations/import', (req, res) => {
         });
 
         resolveScenes().then(() => {
-            // query all existing codes to compute next available code numbers
+            // query all existing codes to find the max WS-XXX number
             db.all("SELECT workstation_code FROM workstations WHERE workstation_code LIKE 'WS-%'", (codeErr, existingCodes) => {
                 if (codeErr) {
                     try { fs.unlinkSync(req.file.path); } catch (_) {}
                     return res.status(500).json({ error: '服务器错误' });
                 }
 
-                // group existing codes by prefix (WS-DEPT-) and find max number per prefix
-                const prefixMax = {};
+                let maxNum = 0;
                 (existingCodes || []).forEach(c => {
                     const code = c.workstation_code || '';
-                    const m = code.match(/^WS-(.+?)-(\d+)$/);
+                    var m = code.match(/^WS-(\d+)$/);
+                    if (!m) m = code.match(/-(\d+)$/);
                     if (m) {
-                        const prefix = m[1];
-                        const num = parseInt(m[2]);
-                        if (!prefixMax[prefix] || num > prefixMax[prefix]) {
-                            prefixMax[prefix] = num;
-                        }
+                        const num = parseInt(m[1]);
+                        if (num > maxNum) maxNum = num;
                     }
                 });
-
-                const prefixCounter = {};
-                // initialize counters from existing max
-                Object.keys(prefixMax).forEach(p => { prefixCounter[p] = prefixMax[p]; });
 
                 const errors = [];
                 let pending = dataRows.length;
@@ -801,11 +797,9 @@ app.post('/api/workstations/import', (req, res) => {
                     if (depthIdx >= 0 && String(d.row[depthIdx]).trim()) notesParts.push('深度: ' + String(d.row[depthIdx]).trim() + '米');
                     if (entranceIdx >= 0 && String(d.row[entranceIdx]).trim()) notesParts.push('入口数量: ' + String(d.row[entranceIdx]).trim());
 
-                    // generate unique code: WS-{dept}-{auto-increment-number}
-                    const prefix = d.department || 'IMP';
-                    if (!prefixCounter[prefix]) prefixCounter[prefix] = prefixMax[prefix] || 0;
-                    prefixCounter[prefix]++;
-                    const wsCode = 'WS-' + prefix + '-' + String(prefixCounter[prefix]).padStart(3, '0');
+                    // generate unique code: WS-XXX (auto-increment)
+                    maxNum++;
+                    const wsCode = 'WS-' + String(maxNum).padStart(3, '0');
 
                     db.run('INSERT INTO workstations (workstation_code, workstation_name, scene_id, department, location, notes) VALUES (?,?,?,?,?,?)',
                         [wsCode, d.name, sceneId, d.department, d.location, notesParts.join(' | ')],
