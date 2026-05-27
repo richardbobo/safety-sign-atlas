@@ -53,6 +53,12 @@
 
 <script>
 var API=window.location.origin+'/api';
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
 var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c',fall:'#059669',noise:'#b91c1c',dust:'#92400e',radiation:'#a21caf',high_temp:'#ea580c',low_temp:'#0891b2',slippery:'#ca8a04',confined:'#6d28d9'};
 
@@ -91,7 +97,7 @@ Promise.all([fetch(API+'/scenes').then(function(r){return r.json();}), loadCusto
         }else{
             thumbs='<span style=color:#9ca3af;font-size:11px;>无</span>';
         }
-        html+='<tr><td>'+(i+1)+'</td><td>'+s.scene_code+'</td><td><b>'+s.scene_name+'</b></td><td>'+s.department+'</td><td>'+(s.location_description||'')+'</td><td>'+(tags||'<span style=color:#9ca3af;>无</span>')+'</td><td style=text-align:center;>'+(signs.length||0)+'</td><td><div class=sign-thumbs>'+thumbs+'</div></td></tr>';
+        html+='<tr><td>'+(i+1)+'</td><td>'+escapeHtml(s.scene_code)+'</td><td><b>'+escapeHtml(s.scene_name)+'</b></td><td>'+escapeHtml(s.department)+'</td><td>'+escapeHtml(s.location_description||'')+'</td><td>'+(tags||'<span style=color:#9ca3af;>无</span>')+'</td><td style=text-align:center;>'+(signs.length||0)+'</td><td><div class=sign-thumbs>'+thumbs+'</div></td></tr>';
     });
     document.getElementById('tbody').innerHTML=html;
 }).catch(function(e){document.body.innerHTML='<h3 style=color:#dc3545;>加载失败: '+e.message+'</h3>';});

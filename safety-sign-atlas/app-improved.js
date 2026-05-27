@@ -1,5 +1,10 @@
 // 安全标志图集管理系统 - 改进版（优化添加标志流程）
 const API_BASE = '/api';
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 let selectedImageFiles = [];
 let currentStep = 1; // 1:上传图片, 2:选择类型, 3:输入信息, 4:确认
 
@@ -268,33 +273,35 @@ function createSignCard(sign) {
         'information': '提示标志'
     }[sign.sign_type] || '未知';
     
+    var escCode = escapeHtml(sign.sign_code);
+    var escName = escapeHtml(sign.sign_name);
+    var escSize = escapeHtml(sign.standard_size);
+    var escMaterial = escapeHtml(sign.material);
+    var escDesc = escapeHtml(sign.description || '');
+
     // 如果有图片，显示图片（点击下载）；否则显示占位符
-    const imageHtml = sign.image_url 
-        ? `<img src="${sign.image_url}" class="sign-image" alt="${sign.sign_name}" style="cursor: pointer;" onclick="downloadSignImage('${sign.image_url}', '${sign.sign_name}')" title="点击下载原图">`
-        : `<div class="sign-image" style="display: flex; align-items: center; justify-content: center; color: #999; font-size: 0.9rem;">暂无图片</div>`;
-    
-    return `
-        <div class="sign-card" id="sign-card-${sign.id}">
-            ${imageHtml}
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div style="flex: 1;">
-                    <div style="color: #666; font-size: 0.9rem;">${sign.sign_code}</div>
-                    <div style="font-weight: bold; margin: 5px 0;">${sign.sign_name}</div>
-                    <div class="sign-type ${typeClass}">${typeName}</div>
-                </div>
-                <button class="btn-delete" onclick="confirmDeleteSign(${sign.id}, '${sign.sign_code}', '${sign.sign_name.replace(/'/g, "\\'")}')" title="删除标志">
-                    🗑️
-                </button>
-            </div>
-            <div style="font-size: 0.9rem; color: #666; margin-top: 10px;">
-                <div>尺寸: ${sign.standard_size}</div>
-                <div>材质: ${sign.material}</div>
-                ${sign.is_ppe == 1 || sign.is_ppe === '1' || sign.is_ppe === true ? '<div style="color: #339af0; font-weight: bold;">🛡️ PPE防护装备</div>' : ''}
-                ${sign.description ? `<div>描述: ${sign.description}</div>` : ''}
-                <div style="font-size: 0.8rem; color: #999; margin-top: 5px;">ID: ${sign.id} • 创建: ${formatDateShort(sign.created_at)}</div>
-            </div>
-        </div>
-    `;
+    var imageHtml = sign.image_url
+        ? '<img src="' + escapeHtml(sign.image_url) + '" class="sign-image" alt="' + escName + '" style="cursor: pointer;" onclick="downloadSignImage(\'' + escapeHtml(sign.image_url) + '\', \'' + escName + '\')" title="点击下载原图">'
+        : '<div class="sign-image" style="display: flex; align-items: center; justify-content: center; color: #999; font-size: 0.9rem;">暂无图片</div>';
+
+    return '<div class="sign-card" id="sign-card-' + sign.id + '">' +
+            imageHtml +
+            '<div style="display: flex; justify-content: space-between; align-items: flex-start;">' +
+                '<div style="flex: 1;">' +
+                    '<div style="color: #666; font-size: 0.9rem;">' + escCode + '</div>' +
+                    '<div style="font-weight: bold; margin: 5px 0;">' + escName + '</div>' +
+                    '<div class="sign-type ' + typeClass + '">' + typeName + '</div>' +
+                '</div>' +
+                '<button class="btn-delete" onclick="confirmDeleteSign(' + sign.id + ', \'' + escCode + '\', \'' + escName + '\')" title="删除标志">🗑️</button>' +
+            '</div>' +
+            '<div style="font-size: 0.9rem; color: #666; margin-top: 10px;">' +
+                '<div>尺寸: ' + escSize + '</div>' +
+                '<div>材质: ' + escMaterial + '</div>' +
+                (sign.is_ppe == 1 || sign.is_ppe === '1' || sign.is_ppe === true ? '<div style="color: #339af0; font-weight: bold;">🛡️ PPE防护装备</div>' : '') +
+                (sign.description ? '<div>描述: ' + escDesc + '</div>' : '') +
+                '<div style="font-size: 0.8rem; color: #999; margin-top: 5px;">ID: ' + sign.id + ' &bull; 创建: ' + formatDateShort(sign.created_at) + '</div>' +
+            '</div>' +
+        '</div>';
 }
 
 // 显示添加标志表单（新流程）
@@ -925,11 +932,11 @@ async function loadScenes() {
                 <div class="scene-card" id="scene-card-${scene.id}">
                     <div class="scene-header">
                         <div style="flex: 1;">
-                            <div class="scene-code">${scene.scene_code}</div>
-                            <div class="scene-name">${scene.scene_name}</div>
+                            <div class="scene-code">${escapeHtml(scene.scene_code)}</div>
+                            <div class="scene-name">${escapeHtml(scene.scene_name)}</div>
                             <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
                                 <span style="background: #e9ecef; padding: 4px 10px; border-radius: 12px; font-size: 0.9rem;">
-                                    ${scene.department}
+                                    ${escapeHtml(scene.department)}
                                 </span>
                                 <span style="font-size: 0.9rem; color: #666;">
                                     创建: ${formatDateShort(scene.created_at)}
@@ -939,8 +946,8 @@ async function loadScenes() {
                         <div class="scene-actions">
                             <button class="action-btn btn-view" onclick="viewScene(${scene.id})" title="查看场景详情">👁️ 查看详情</button>
                             <button class="action-btn btn-edit" onclick="editScene(${scene.id})" title="编辑场景">✏️ 编辑</button>
-                            <button class="action-btn btn-add-sign" onclick="addSignsToScene(${scene.id}, '${scene.scene_name.replace(/'/g, "\\'")}', '${scene.scene_code}')" title="添加标志">➕ 标志</button>
-                            <button class="action-btn btn-delete-scene" onclick="confirmDeleteScene(${scene.id}, '${scene.scene_code}', '${scene.scene_name.replace(/'/g, "\\'")}')" title="删除场景">🗑️ 删除</button>
+                            <button class="action-btn btn-add-sign" onclick="addSignsToScene(${scene.id}, '${escapeHtml(scene.scene_name).replace(/'/g, "\\'")}', '${escapeHtml(scene.scene_code)}')" title="添加标志">➕ 标志</button>
+                            <button class="action-btn btn-delete-scene" onclick="confirmDeleteScene(${scene.id}, '${escapeHtml(scene.scene_code)}', '${escapeHtml(scene.scene_name).replace(/'/g, "\\'")}')" title="删除场景">🗑️ 删除</button>
                         </div>
                     </div>
                     
@@ -962,13 +969,13 @@ async function loadScenes() {
                     ${scene.workstation_count > 0 ? `
                         <div style="margin: 8px 0; font-size: 0.8rem; color: #6366f1; display: flex; align-items: center; gap: 6px;">
                             <span style="font-weight:600;">💼 ${scene.workstation_count}个岗位：</span>
-                            <span style="color:#4b5563;">${(scene.workstations||[]).map(w => w.workstation_code + ' ' + w.workstation_name).join('、')}</span>
+                            <span style="color:#4b5563;">${escapeHtml((scene.workstations||[]).map(w => w.workstation_code + ' ' + w.workstation_name).join('、'))}</span>
                         </div>
                     ` : ''}
 
                     ${scene.installation_notes ? `
                         <div style="margin: 10px 0; font-size: 0.9rem; color: #666;">
-                            <strong>安装备注:</strong> ${scene.installation_notes}
+                            <strong>安装备注:</strong> ${escapeHtml(scene.installation_notes)}
                         </div>
                     ` : ''}
                     
@@ -981,9 +988,9 @@ async function loadScenes() {
                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                                 ${sortSignsByType(scene.signs).map(sign => {
                                     const imageUrl = sign.image_url || '';
-                                    return imageUrl 
-                                        ? `<img src="${getFullImageUrl(imageUrl)}" style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px; border: 1px solid #e9ecef; background: white;" title="${sign.sign_code}: ${sign.sign_name} (${getSignTypeChinese(sign.sign_type)})">`
-                                        : `<div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; color: #999; font-size: 0.7rem;" title="${sign.sign_code}: ${sign.sign_name} (${getSignTypeChinese(sign.sign_type)})">无图</div>`;
+                                    return imageUrl
+                                        ? `<img src="${getFullImageUrl(imageUrl)}" style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px; border: 1px solid #e9ecef; background: white;" title="${escapeHtml(sign.sign_code + ': ' + sign.sign_name + ' (' + getSignTypeChinese(sign.sign_type) + ')')}">`
+                                        : `<div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; color: #999; font-size: 0.7rem;" title="${escapeHtml(sign.sign_code + ': ' + sign.sign_name + ' (' + getSignTypeChinese(sign.sign_type) + ')')}">无图</div>`;
                                 }).join('')}
                             </div>
                         </div>
@@ -1063,24 +1070,24 @@ function renderSceneTable(scenes) {
         var tags='';
         if(s.hazard_tags){s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){var tid=t.trim();var n=getHazardTagName(tid);var c=getHazardTagColor(tid);tags+='<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:1px 6px;border-radius:8px;font-size:0.7rem;margin:1px;">'+n+'</span>';});}
         var wsInfo='';
-        if(s.workstation_count>0){wsInfo='<span style="color:#6366f1;font-weight:600;">'+s.workstation_count+'个</span> <span style="font-size:0.7rem;color:#6b7280;">'+(s.workstations||[]).map(function(w){return w.workstation_name;}).join('、')+'</span>';}else{wsInfo='<span style="color:#d1d5db;">无</span>';}
+        if(s.workstation_count>0){wsInfo='<span style="color:#6366f1;font-weight:600;">'+s.workstation_count+'个</span> <span style="font-size:0.7rem;color:#6b7280;">'+escapeHtml((s.workstations||[]).map(function(w){return w.workstation_name;}).join('、'))+'</span>';}else{wsInfo='<span style="color:#d1d5db;">无</span>';}
         var signs=s.signs||[];
         var imgs='';
         if(signs.length>0){signs.slice(0,5).forEach(function(sg){if(sg.image_url){imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;" onerror="this.style.display=\'none\'">';}});if(signs.length>5) imgs+='<span style="font-size:0.7rem;color:#9ca3af;">+'+ (signs.length-5)+'</span>';}
         else imgs='<span style="color:#9ca3af;font-size:0.7rem;">无</span>';
         h+='<tr>'+
-            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+s.scene_code+'</td>'+
-            '<td style="padding:6px 10px;border:1px solid #e5e7eb;"><b>'+s.scene_name+'</b></td>'+
-            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+s.department+'</td>'+
-            '<td style="padding:6px 10px;border:1px solid #e5e7eb;font-size:0.8rem;">'+(s.location_description||'')+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+escapeHtml(s.scene_code)+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;"><b>'+escapeHtml(s.scene_name)+'</b></td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+escapeHtml(s.department)+'</td>'+
+            '<td style="padding:6px 10px;border:1px solid #e5e7eb;font-size:0.8rem;">'+escapeHtml(s.location_description||'')+'</td>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+(tags||'<span style="color:#9ca3af;">无</span>')+'</td>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;">'+imgs+'</td>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;font-size:0.8rem;">'+wsInfo+'</td>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;white-space:nowrap;">'+
                 '<button onclick="viewScene('+s.id+')" style="background:#1a56db;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">详情</button> '+
                 '<button onclick="editScene('+s.id+')" style="background:#f59e0b;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">编辑</button> '+
-                '<button onclick="addSignsToScene('+s.id+',\''+(s.scene_name||'').replace(/'/g,"\\'")+'\',\''+s.scene_code+'\')" style="background:#059669;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">+标志</button> '+
-                '<button onclick="confirmDeleteScene('+s.id+',\''+s.scene_code+'\',\''+(s.scene_name||'').replace(/'/g,"\\'")+'\')" style="background:#dc3545;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">删除</button>'+
+                '<button onclick="addSignsToScene('+s.id+',\''+escapeHtml(s.scene_name||'').replace(/'/g,"\\'")+'\',\''+escapeHtml(s.scene_code)+'\')" style="background:#059669;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">+标志</button> '+
+                '<button onclick="confirmDeleteScene('+s.id+',\''+escapeHtml(s.scene_code)+'\',\''+escapeHtml(s.scene_name||'').replace(/'/g,"\\'")+'\')" style="background:#dc3545;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">删除</button>'+
             '</td></tr>';
     });
     h+='</tbody></table>';
@@ -1847,13 +1854,13 @@ function showSceneDetailModal(scene) {
 
     // Build info table rows
     var infoRows = [
-        ['场景名称', scene.scene_name],
-        ['场景编码', scene.scene_code],
-        ['所属部门', scene.department],
-        ['位置描述', scene.location_description || '未填写'],
+        ['场景名称', escapeHtml(scene.scene_name)],
+        ['场景编码', escapeHtml(scene.scene_code)],
+        ['所属部门', escapeHtml(scene.department)],
+        ['位置描述', escapeHtml(scene.location_description || '未填写')],
         ['危险源', tagsHtml],
         ['标志数量', (scene.signs||[]).length + ' 个'],
-        ['安装备注', scene.installation_notes || '无']
+        ['安装备注', escapeHtml(scene.installation_notes || '无')]
     ];
     var infoTable = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:10px;">'+
         infoRows.map(function(r){return '<tr><td style="padding:5px 10px;border:1px solid #e5e7eb;background:#f3f4f6;font-weight:600;width:80px;color:#374151;">'+r[0]+'</td><td style="padding:5px 10px;border:1px solid #e5e7eb;color:#4b5563;">'+r[1]+'</td></tr>';}).join('')+
@@ -1868,7 +1875,7 @@ function showSceneDetailModal(scene) {
             signs.map(function(s){
                 return '<div style="border:1px solid #e5e7eb;border-radius:6px;padding:5px;background:#fff;text-align:center;position:relative;">'+
                     '<button onclick="event.stopPropagation();removeSignFromScene('+s.id+','+scene.id+')" title="移除" style="position:absolute;top:3px;right:3px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:9px;cursor:pointer;z-index:1;line-height:18px;">✕</button>'+
-                    '<img src="'+getFullImageUrl(s.image_url)+'" style="width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;" onerror="this.style.display=\'none\'" alt="'+s.sign_name+'">'+
+                    '<img src="'+getFullImageUrl(s.image_url)+'" style="width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;" onerror="this.style.display=\'none\'" alt="'+escapeHtml(s.sign_name)+'">'+
                 '</div>';
             }).join('')+
             '</div>';
@@ -1882,10 +1889,10 @@ function showSceneDetailModal(scene) {
 
             // Header
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:2px solid #1a56db;padding-bottom:10px;">'+
-                '<div><h2 style="color:#1e3a5f;margin:0;font-size:1.25rem;">场景详情 - '+scene.scene_name+'</h2>'+
-                '<div style="font-size:0.8rem;color:#6b7280;margin-top:2px;">'+scene.scene_code+' | '+scene.department+'</div></div>'+
+                '<div><h2 style="color:#1e3a5f;margin:0;font-size:1.25rem;">场景详情 - '+escapeHtml(scene.scene_name)+'</h2>'+
+                '<div style="font-size:0.8rem;color:#6b7280;margin-top:2px;">'+escapeHtml(scene.scene_code)+' | '+escapeHtml(scene.department)+'</div></div>'+
                 '<div style="display:flex;gap:6px;">'+
-                    '<button onclick="closeSceneDetailModal();addSignsToScene('+scene.id+',\''+scene.scene_name.replace(/'/g,"\\'")+'\',\''+scene.scene_code+'\')" style="background:#1a56db;color:#fff;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:600;">➕ 添加标志</button>'+
+                    '<button onclick="closeSceneDetailModal();addSignsToScene('+scene.id+',\''+escapeHtml(scene.scene_name).replace(/'/g,"\\'")+'\',\''+escapeHtml(scene.scene_code)+'\')" style="background:#1a56db;color:#fff;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:0.8rem;font-weight:600;">➕ 添加标志</button>'+
                                         '<button onclick="closeSceneDetailModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#6b7280;padding:0 4px;">&times;</button>'+
                 '</div>'+
             '</div>'+
@@ -1913,7 +1920,7 @@ function showSceneDetailModal(scene) {
                     (scene.workstations&&scene.workstations.length>0 ?
                         '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;margin-top:10px;font-size:0.75rem;">'+
                         '<div style="font-weight:600;color:#1e3a5f;margin-bottom:6px;">💼 关联岗位 ('+scene.workstations.length+')</div>'+
-                        scene.workstations.map(function(w){return '<span style="display:inline-block;background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;margin:2px 4px;font-size:0.7rem;">'+w.workstation_code+' '+w.workstation_name+'</span>';}).join('')+
+                        scene.workstations.map(function(w){return '<span style="display:inline-block;background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;margin:2px 4px;font-size:0.7rem;">'+escapeHtml(w.workstation_code+' '+w.workstation_name)+'</span>';}).join('')+
                         '</div>' : '')+
                 '</div>'+
             '</div>'+
@@ -2350,23 +2357,18 @@ async function loadSignsForSelection() {
                         ? `<img src="${imageUrl}" style="width: 100%; height: 80px; object-fit: contain; border-radius: 6px; background: white; border: 1px solid #e9ecef;">`
                         : `<div style="width: 100%; height: 80px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef; color: #999; font-size: 0.8rem;">暂无图片</div>`;
                     
-                    html += `
-                        <div class="sign-card-selectable" data-sign-id="${sign.id}" data-sign-type="${sign.sign_type}" data-sign-name="${sign.sign_name.replace(/"/g, '&quot;')}" onclick="toggleSignSelection(${sign.id}, '${sign.sign_code}', '${sign.sign_name.replace(/'/g, "\\'")}', '${imageUrl.replace(/'/g, "\\'")}')">
-                            <div style="position: relative;">
-                                ${imageHtml}
-                                <div style="position: absolute; top: 5px; right: 5px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #28a745; display: none;" id="selected-indicator-${sign.id}">
-                                    ✓
-                                </div>
-                                <button class="add-sign-btn" style="position: absolute; bottom: 5px; right: 5px; background: #007bff; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer;">
-                                    +
-                                </button>
-                            </div>
-                            <div style="padding: 5px 0; text-align: center;">
-                                <div style="font-size: 0.8rem; font-weight: bold; color: #333;">${sign.sign_code}</div>
-                                <div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sign.sign_name}</div>
-                            </div>
-                        </div>
-                    `;
+                    html +=
+                        '<div class="sign-card-selectable" data-sign-id="' + sign.id + '" data-sign-type="' + sign.sign_type + '" data-sign-name="' + escapeHtml(sign.sign_name).replace(/"/g, '&quot;') + '" onclick="toggleSignSelection(' + sign.id + ', \'' + escapeHtml(sign.sign_code) + '\', \'' + escapeHtml(sign.sign_name) + '\', \'' + escapeHtml(imageUrl) + '\')">' +
+                            '<div style="position: relative;">' +
+                                imageHtml +
+                                '<div style="position: absolute; top: 5px; right: 5px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #28a745; display: none;" id="selected-indicator-' + sign.id + '">✓</div>' +
+                                '<button class="add-sign-btn" style="position: absolute; bottom: 5px; right: 5px; background: #007bff; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer;">+</button>' +
+                            '</div>' +
+                            '<div style="padding: 5px 0; text-align: center;">' +
+                                '<div style="font-size: 0.8rem; font-weight: bold; color: #333;">' + escapeHtml(sign.sign_code) + '</div>' +
+                                '<div style="font-size: 0.75rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + escapeHtml(sign.sign_name) + '</div>' +
+                            '</div>' +
+                        '</div>';
                 });
                 
                 html += '</div></div>';
@@ -2872,19 +2874,6 @@ async function removeSignFromScene(relationId, sceneId) {
     } catch (e) {
         alert('移除标志失败: ' + e.message);
     }
-}
-
-// 按类型排序标志
-function sortSignsByType(signs) {
-    const typeOrder = {
-        'warning': 1,
-        'prohibition': 2,
-        'instruction': 3,
-        'information': 4
-    };
-    return [...signs].sort((a, b) => {
-        return (typeOrder[a.sign_type] || 99) - (typeOrder[b.sign_type] || 99);
-    });
 }
 
 // 搜索标志（按名称/编码/描述）

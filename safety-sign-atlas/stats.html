@@ -54,6 +54,11 @@ tr:nth-child(even) td{background:#f9fafb;}
 <script>
 var API = '/api';
 
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function bar(c, w, cls) {
     return '<div class=bar-wrap><span style="min-width:80px;font-size:0.8rem;">'+c+'</span><div class="bar '+(cls||'')+'" style="width:'+Math.max(w*3,2)+'px;"></div><span style="font-size:0.75rem;color:#6b7280;">'+w+'</span></div>';
 }
@@ -97,7 +102,7 @@ Promise.all([
     var maxDept=0;
     Object.values(deptMap).forEach(function(v){if(v.workstations>maxDept)maxDept=v.workstations;});
     Object.entries(deptMap).sort(function(a,b){return b[1].workstations-a[1].workstations;}).forEach(function(e){
-        deptRows+='<tr><td>'+e[0]+'</td><td>'+e[1].workstations+'</td><td>'+e[1].scenes.size+'</td><td>'+e[1].signs+'</td><td>'+bar('',e[1].workstations,'')+'</td></tr>';
+        deptRows+='<tr><td>'+escapeHtml(e[0])+'</td><td>'+e[1].workstations+'</td><td>'+e[1].scenes.size+'</td><td>'+e[1].signs+'</td><td>'+bar('',e[1].workstations,'')+'</td></tr>';
     });
 
     // Hazard tag stats: count workstations by tag (via scene)
@@ -115,7 +120,7 @@ Promise.all([
     var hazardRows='';
     Object.entries(hazardMap).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){
         var n=tagName(e[0]), c=tagColor(e[0]);
-        hazardRows+='<tr><td><span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+n+'</span></td><td>'+e[0]+'</td><td>'+e[1]+'岗位</td></tr>';
+        hazardRows+='<tr><td><span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+escapeHtml(n)+'</span></td><td>'+escapeHtml(e[0])+'</td><td>'+e[1]+'岗位</td></tr>';
     });
 
     // Sign type distribution: across workstations' scenes (deduped by scene)
@@ -171,7 +176,7 @@ Promise.all([
     var usageRows='';
     signUsageArr.forEach(function(u,i){
         var imgTag=u.image_url?'<img src="'+u.image_url+'" style="width:40px;height:40px;object-fit:contain;border-radius:4px;background:#f9fafb;border:1px solid #e5e7eb;" onerror="this.style.display=\'none\'">':'';
-        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+u.name+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+u.code+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.workstations+'个岗位</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
+        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+escapeHtml(u.name)+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+escapeHtml(u.code)+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.workstations+'个岗位</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
     });
 
     var html=
@@ -196,7 +201,7 @@ Promise.all([
 
         '<div class=charts>'+
             '<div class=section><h2>岗位最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>岗位数</th></tr></thead><tbody>'+
-            (function(){var sc=[];workstations.forEach(function(w){sc[w.scene_id]=(sc[w.scene_id]||0)+1;});return Object.entries(sc).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){var scene=sceneMap[parseInt(e[0])];return '<tr><td><b>'+(scene?scene.scene_name:'?')+'</b> <span style=color:#9ca3af;font-size:0.8rem;>'+(scene?scene.scene_code:'?')+'</span></td><td>'+(scene?scene.department:'?')+'</td><td>'+e[1]+'</td></tr>';}).join('');})()+
+            (function(){var sc=[];workstations.forEach(function(w){sc[w.scene_id]=(sc[w.scene_id]||0)+1;});return Object.entries(sc).sort(function(a,b){return b[1]-a[1];}).slice(0,10).map(function(e){var scene=sceneMap[parseInt(e[0])];return '<tr><td><b>'+escapeHtml(scene?scene.scene_name:'?')+'</b> <span style=color:#9ca3af;font-size:0.8rem;>'+escapeHtml(scene?scene.scene_code:'?')+'</span></td><td>'+escapeHtml(scene?scene.department:'?')+'</td><td>'+e[1]+'</td></tr>';}).join('');})()+
             '</tbody></table></div>'+
         '</div>';
 

@@ -69,13 +69,19 @@
 <script>
 var API = window.location.origin + '/api';
 var id = new URLSearchParams(window.location.search).get('id');
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 if(!id){document.body.innerHTML='<h3 style=padding:40px;text-align:center;color:#999;>缺少场景ID参数</h3>';}
 
 fetch(API+'/scenes/'+id).then(function(r){return r.json();}).then(function(scene){
     document.title='安全标志张贴 - '+scene.scene_name;
     var ts=(function(){var d=new Date();return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');})();
     document.getElementById('timeStr').textContent=ts;
-    document.getElementById('sceneInfo').textContent=scene.scene_name+' | '+scene.scene_code+' | '+scene.department;
+    document.getElementById('sceneInfo').textContent=scene.scene_name+' | '+scene.scene_code+' | '+scene.department; // textContent is safe
 
     // Tags
     var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
@@ -89,20 +95,20 @@ fetch(API+'/scenes/'+id).then(function(r){return r.json();}).then(function(scene
     var ih=scene.scene_image_url?'<img src="'+scene.scene_image_url+'" alt=场景图片 onerror="this.parentElement.innerHTML=\'<div class=placeholder>暂无场景图片</div>\'">':'<div class=placeholder>暂无场景图片</div>';
     l.innerHTML='<div class=scene-img>'+ih+'</div>'+
         '<table class=info-table>'+
-        '<tr><td>场景名称</td><td>'+scene.scene_name+'</td></tr>'+
-        '<tr><td>场景编码</td><td>'+scene.scene_code+'</td></tr>'+
-        '<tr><td>所属部门</td><td>'+scene.department+'</td></tr>'+
-        '<tr><td>位置描述</td><td>'+(scene.location_description||'未填写')+'</td></tr>'+
+        '<tr><td>场景名称</td><td>'+escapeHtml(scene.scene_name)+'</td></tr>'+
+        '<tr><td>场景编码</td><td>'+escapeHtml(scene.scene_code)+'</td></tr>'+
+        '<tr><td>所属部门</td><td>'+escapeHtml(scene.department)+'</td></tr>'+
+        '<tr><td>位置描述</td><td>'+escapeHtml(scene.location_description||'未填写')+'</td></tr>'+
         '<tr><td>危险源</td><td>'+(th||'无')+'</td></tr>'+
         '<tr><td>标志数量</td><td>'+(scene.signs||[]).length+' 个</td></tr>'+
-        '<tr><td>安装备注</td><td>'+(scene.installation_notes||'无')+'</td></tr>'+
+        '<tr><td>安装备注</td><td>'+escapeHtml(scene.installation_notes||'无')+'</td></tr>'+
         '</table>';
 
     // Right: signs grid (images only)
     var signs=(scene.signs||[]).sort(function(a,b){var o={warning:1,prohibition:2,instruction:3,information:4};return(o[a.sign_type]||5)-(o[b.sign_type]||5);});
     var g=document.getElementById('signsGrid');
     if(signs.length<=4)g.className='signs-grid col2';else if(signs.length<=8)g.className='signs-grid col3';
-    signs.forEach(function(s){g.innerHTML+='<div class=sign-card><img src="'+(s.image_url||'')+'" onerror="this.style.display=\'none\'" alt="'+s.sign_name+'"></div>';});
+    signs.forEach(function(s){g.innerHTML+='<div class=sign-card><img src="'+escapeHtml(s.image_url||'')+'" onerror="this.style.display=\'none\'" alt="'+escapeHtml(s.sign_name)+'"></div>';});
 
     // Notes
     document.getElementById('notesSection').innerHTML=

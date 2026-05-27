@@ -123,56 +123,53 @@ function initializeDatabase() {
 }
 
 // 文件上传配置
+const ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, './uploads/');
     },
     filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
+        const safeExt = path.extname(file.originalname).replace(/[^a-zA-Z0-9.]/g, '');
+        cb(null, Date.now() + (safeExt || '.jpg'));
     }
 });
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: MAX_FILE_SIZE },
+    fileFilter: (req, file, cb) => {
+        if (ALLOWED_MIMES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('不支持的文件类型，仅允许 JPG/PNG/GIF/WEBP'));
+        }
+    }
+});
 
 // ==================== 通用文件上传API ====================
 
 // 通用图片上传API
-app.post('/api/uploads', upload.single('scene_image'), (req, res) => {
-    if (!req.file) {
-        res.status(400).json({ 
-            success: false, 
-            error: '请选择要上传的图片文件' 
+app.post('/api/uploads', (req, res, next) => {
+    upload.single('scene_image')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ success: false, error: '图片文件大小不能超过5MB' });
+            }
+            return res.status(400).json({ success: false, error: '文件上传失败' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: '请选择要上传的图片文件' });
+        }
+        const image_url = `/uploads/${req.file.filename}`;
+        res.json({
+            success: true,
+            message: '图片上传成功',
+            image_url: image_url,
+            filename: req.file.filename,
+            size: req.file.size,
+            mimetype: req.file.mimetype
         });
-        return;
-    }
-    
-    // 检查文件类型
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(req.file.mimetype)) {
-        res.status(400).json({ 
-            success: false, 
-            error: '只支持 JPG、PNG、GIF、WEBP 格式的图片文件' 
-        });
-        return;
-    }
-    
-    // 检查文件大小（最大5MB）
-    if (req.file.size > 5 * 1024 * 1024) {
-        res.status(400).json({ 
-            success: false, 
-            error: '图片文件大小不能超过5MB' 
-        });
-        return;
-    }
-    
-    const image_url = `/uploads/${req.file.filename}`;
-    
-    res.json({ 
-        success: true,
-        message: '图片上传成功',
-        image_url: image_url,
-        filename: req.file.filename,
-        size: req.file.size,
-        mimetype: req.file.mimetype
     });
 });
 
@@ -195,7 +192,7 @@ app.get('/api/signs', (req, res) => {
     
     db.all(sql, [], (err, rows) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         res.json(rows);
@@ -215,7 +212,7 @@ app.get('/api/signs/type/:type', (req, res) => {
     const sql = 'SELECT * FROM sign_library WHERE sign_type = ? ORDER BY sign_code';
     db.all(sql, [type], (err, rows) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         res.json(rows);
@@ -234,7 +231,7 @@ app.post('/api/signs', (req, res) => {
     
     db.run(sql, [sign_code, sign_name, sign_type, color_scheme, standard_size, material, description], function(err) {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         res.json({ 
@@ -248,82 +245,53 @@ app.post('/api/signs', (req, res) => {
 app.delete('/api/signs/:id', (req, res) => {
     const signId = req.params.id;
     
-    // 首先检查标志是否存在
-    const checkSql = 'SELECT * FROM sign_library WHERE id = ?';
-    db.get(checkSql, [signId], (err, row) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        if (!row) {
-            res.status(404).json({ error: '标志不存在' });
-            return;
-        }
-        
-        // 删除标志
-        const deleteSql = 'DELETE FROM sign_library WHERE id = ?';
-        db.run(deleteSql, [signId], function(err) {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            
-            // 同时删除关联的场景标志记录
-            const deleteSceneSignsSql = 'DELETE FROM scene_signs WHERE sign_id = ?';
-            db.run(deleteSceneSignsSql, [signId], function(err2) {
-                if (err2) {
-                    console.error('删除关联记录失败:', err2);
-                }
-                
-                res.json({
-                    success: true,
-                    message: '标志删除成功',
-                    deletedId: signId,
-                    rowsAffected: this.changes
-                });
+    // 检查标志是否存在；scene_signs 通过 ON DELETE CASCADE 自动清理
+    db.get('SELECT id FROM sign_library WHERE id = ?', [signId], (err, row) => {
+        if (err) { return res.status(500).json({ error: '服务器错误' }); }
+        if (!row) { return res.status(404).json({ error: '标志不存在' }); }
+        db.run('DELETE FROM sign_library WHERE id = ?', [signId], function(delErr) {
+            if (delErr) { return res.status(500).json({ error: '删除失败，请重试' }); }
+            res.json({
+                success: true,
+                message: '标志删除成功',
+                deletedId: signId,
+                rowsAffected: this.changes
             });
         });
     });
 });
 
 // 上传标志图片
-app.post('/api/signs/upload', upload.single('image'), (req, res) => {
-    try {
-        const { sign_code, sign_name, sign_type, color_scheme, standard_size, material, description, is_ppe } = req.body;
-        
+app.post('/api/signs/upload', (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: '图片文件大小不能超过5MB' });
+            }
+            return res.status(400).json({ error: '文件上传失败' });
+        }
         if (!req.file) {
             return res.status(400).json({ error: '请上传图片文件' });
         }
-        
-        // 构建图片URL
+        const { sign_code, sign_name, sign_type, color_scheme, standard_size, material, description, is_ppe } = req.body;
         const image_url = `/uploads/${req.file.filename}`;
-        
         const sql = `
-            INSERT INTO sign_library 
-            (sign_code, sign_name, sign_type, color_scheme, standard_size, material, description, image_url, is_ppe) 
+            INSERT INTO sign_library
+            (sign_code, sign_name, sign_type, color_scheme, standard_size, material, description, image_url, is_ppe)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        
-        db.run(sql, [sign_code, sign_name, sign_type, color_scheme, standard_size, material, description, image_url, is_ppe || 0], function(err) {
-            if (err) {
-                // 删除已上传的文件
-                fs.unlinkSync(req.file.path);
-                res.status(500).json({ error: err.message });
-                return;
+        db.run(sql, [sign_code, sign_name, sign_type, color_scheme, standard_size, material, description, image_url, is_ppe || 0], function(insertErr) {
+            if (insertErr) {
+                try { fs.unlinkSync(req.file.path); } catch (e) { /* ignore */ }
+                return res.status(500).json({ error: '保存标志失败，请重试' });
             }
-            res.json({ 
+            res.json({
                 id: this.lastID,
                 message: '标志添加成功',
                 image_url: image_url
             });
         });
-    } catch (error) {
-        if (req.file && req.file.path) {
-            fs.unlinkSync(req.file.path);
-        }
-        res.status(500).json({ error: error.message });
-    }
+    });
 });
 
 // ==================== 场景管理API ====================
@@ -343,7 +311,7 @@ app.get('/api/scenes', (req, res) => {
     `;
     db.all(sql, [], (err, rows) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         rows.forEach(r => {
@@ -370,7 +338,7 @@ app.post('/api/scenes', (req, res) => {
     
     db.run(sql, [scene_code, scene_name, department, hazard_tags, location_description || '', installation_notes || '', scene_image_url || null], function(err) {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         res.json({ 
@@ -387,7 +355,7 @@ app.get('/api/scenes/:id', (req, res) => {
     // 获取场景基本信息
     db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         
@@ -407,7 +375,7 @@ app.get('/api/scenes/:id', (req, res) => {
         
         db.all(sql, [sceneId], (err, signs) => {
             if (err) {
-                res.status(500).json({ error: err.message });
+                res.status(500).json({ error: '服务器错误' });
                 return;
             }
 
@@ -425,7 +393,7 @@ app.get('/api/scenes/next-code', (req, res) => {
     // 获取当前最大的场景编码
     db.get('SELECT MAX(scene_code) as max_code FROM scenes_new', (err, result) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         
@@ -451,7 +419,7 @@ app.put('/api/scenes/:id', (req, res) => {
     // 首先检查场景是否存在
     db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         
@@ -474,7 +442,7 @@ app.put('/api/scenes/:id', (req, res) => {
         
         db.run(sql, [scene_name, department, hazard_tags, location_description || '', installation_notes || '', scene_image_url || null, sceneId], function(err) {
             if (err) {
-                res.status(500).json({ error: err.message });
+                res.status(500).json({ error: '服务器错误' });
                 return;
             }
             
@@ -488,41 +456,31 @@ app.put('/api/scenes/:id', (req, res) => {
 });
 
 // 上传场景图片
-app.post('/api/scenes/:id/upload-image', upload.single('scene_image'), (req, res) => {
+app.post('/api/scenes/:id/upload-image', (req, res, next) => {
     const sceneId = req.params.id;
-    
-    if (!req.file) {
-        res.status(400).json({ error: '请选择要上传的图片文件' });
-        return;
-    }
-    
-    // 检查场景是否存在
-    db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
+    upload.single('scene_image')(req, res, (err) => {
         if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        if (!scene) {
-            res.status(404).json({ error: '场景不存在' });
-            return;
-        }
-        
-        const scene_image_url = `/uploads/${req.file.filename}`;
-        
-        // 更新场景的图片URL
-        const sql = 'UPDATE scenes_new SET scene_image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-        db.run(sql, [scene_image_url, sceneId], function(err) {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: '图片文件大小不能超过5MB' });
             }
-            
-            res.json({ 
-                success: true,
-                message: '场景图片上传成功',
-                scene_image_url: scene_image_url,
-                rowsAffected: this.changes
+            return res.status(400).json({ error: '文件上传失败' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: '请选择要上传的图片文件' });
+        }
+        db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (dbErr, scene) => {
+            if (dbErr) { return res.status(500).json({ error: '服务器错误' }); }
+            if (!scene) { return res.status(404).json({ error: '场景不存在' }); }
+            const scene_image_url = `/uploads/${req.file.filename}`;
+            const sql = 'UPDATE scenes_new SET scene_image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+            db.run(sql, [scene_image_url, sceneId], function(updateErr) {
+                if (updateErr) { return res.status(500).json({ error: '保存图片失败，请重试' }); }
+                res.json({
+                    success: true,
+                    message: '场景图片上传成功',
+                    scene_image_url: scene_image_url,
+                    rowsAffected: this.changes
+                });
             });
         });
     });
@@ -542,13 +500,13 @@ app.delete('/api/scenes/:id', (req, res) => {
 
         // 检查场景是否存在
         db.get('SELECT * FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
-            if (err) { res.status(500).json({ error: err.message }); return; }
+            if (err) { res.status(500).json({ error: '服务器错误' }); return; }
             if (!scene) { res.status(404).json({ error: '场景不存在' }); return; }
 
             // 删除场景（关联的scene_signs记录会自动级联删除）
             db.run('DELETE FROM scenes_new WHERE id = ?', [sceneId], function(err) {
                 if (err) {
-                    res.status(500).json({ error: err.message });
+                    res.status(500).json({ error: '服务器错误' });
                     return;
                 }
                 res.json({ success: true, message: '场景删除成功', deletedId: sceneId, rowsAffected: this.changes });
@@ -561,30 +519,34 @@ app.delete('/api/scenes/:id', (req, res) => {
 app.post('/api/scenes/:id/signs', (req, res) => {
     const sceneId = req.params.id;
     const { sign_id, installation_height, observation_distance, special_requirements } = req.body;
-    
-    // 获取当前最大排序值
-    db.get('SELECT MAX(display_order) as max_order FROM scene_signs WHERE scene_id = ?', [sceneId], (err, result) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        const display_order = (result.max_order || 0) + 1;
-        
-        const sql = `
-            INSERT INTO scene_signs 
-            (scene_id, sign_id, display_order, installation_height, observation_distance, special_requirements) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        `;
-        
-        db.run(sql, [sceneId, sign_id, display_order, installation_height, observation_distance, special_requirements], function(err) {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            res.json({
-                id: this.lastID,
-                message: '标志添加成功'
+
+    if (!sign_id) {
+        return res.status(400).json({ error: '请选择要添加的标志' });
+    }
+
+    // 检查场景是否存在
+    db.get('SELECT id FROM scenes_new WHERE id = ?', [sceneId], (err, scene) => {
+        if (err) { return res.status(500).json({ error: '服务器错误' }); }
+        if (!scene) { return res.status(404).json({ error: '场景不存在' }); }
+
+        // 检查是否已存在相同标志
+        db.get('SELECT id FROM scene_signs WHERE scene_id = ? AND sign_id = ?', [sceneId, sign_id], (dupErr, dup) => {
+            if (dupErr) { return res.status(500).json({ error: '服务器错误' }); }
+            if (dup) { return res.status(409).json({ error: '该标志已存在于场景中' }); }
+
+            // 获取当前最大排序值
+            db.get('SELECT MAX(display_order) as max_order FROM scene_signs WHERE scene_id = ?', [sceneId], (orderErr, result) => {
+                if (orderErr) { return res.status(500).json({ error: '服务器错误' }); }
+                const display_order = (result.max_order || 0) + 1;
+                const sql = `
+                    INSERT INTO scene_signs
+                    (scene_id, sign_id, display_order, installation_height, observation_distance, special_requirements)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `;
+                db.run(sql, [sceneId, sign_id, display_order, installation_height, observation_distance, special_requirements], function(insErr) {
+                    if (insErr) { return res.status(500).json({ error: '添加失败，请重试' }); }
+                    res.json({ id: this.lastID, message: '标志添加成功' });
+                });
             });
         });
     });
@@ -594,10 +556,10 @@ app.post('/api/scenes/:id/signs', (req, res) => {
 app.delete('/api/scene-signs/:id', (req, res) => {
     const relationId = req.params.id;
     db.get('SELECT * FROM scene_signs WHERE id = ?', [relationId], (err, row) => {
-        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         if (!row) { res.status(404).json({ error: '关联记录不存在' }); return; }
         db.run('DELETE FROM scene_signs WHERE id = ?', [relationId], function(err) {
-            if (err) { res.status(500).json({ error: err.message }); return; }
+            if (err) { res.status(500).json({ error: '服务器错误' }); return; }
             res.json({ success: true, message: '标志已从场景移除', deletedId: relationId });
         });
     });
@@ -616,7 +578,7 @@ app.get('/api/workstations', (req, res) => {
     if (req.query.department) { sql += ' AND w.department = ?'; params.push(req.query.department); }
     sql += ' ORDER BY w.workstation_code';
     db.all(sql, params, (err, rows) => {
-        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         res.json(rows);
     });
 });
@@ -625,7 +587,7 @@ app.get('/api/workstations', (req, res) => {
 // 获取下一个岗位编码（必须在 /:id 之前注册）
 app.get('/api/workstations/next-code', (req, res) => {
     db.all('SELECT workstation_code FROM workstations', (err, rows) => {
-        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         var maxNum = 0;
         (rows || []).forEach(function(r) {
             var m = (r.workstation_code || '').match(/^WS-(\d+)$/);
@@ -637,7 +599,7 @@ app.get('/api/workstations/next-code', (req, res) => {
 
 app.get('/api/workstations/:id', (req, res) => {
     db.get('SELECT w.*, s.scene_name, s.scene_code FROM workstations w LEFT JOIN scenes_new s ON w.scene_id = s.id WHERE w.id = ?', [req.params.id], (err, row) => {
-        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         if (!row) { res.status(404).json({ error: '岗位不存在' }); return; }
         res.json(row);
     });
@@ -653,7 +615,7 @@ app.post('/api/workstations', (req, res) => {
         [workstation_code, workstation_name, scene_id, department||'', location||'', notes||''], function(err) {
         if (err) {
             if (err.code === 'SQLITE_CONSTRAINT') { res.status(409).json({ error: '岗位编码已存在或场景不存在' }); return; }
-            res.status(500).json({ error: err.message }); return;
+            res.status(500).json({ error: '服务器错误' }); return;
         }
         res.json({ id: this.lastID, message: '岗位创建成功' });
     });
@@ -673,7 +635,7 @@ app.put('/api/workstations/:id', (req, res) => {
     fields.push('updated_at = CURRENT_TIMESTAMP');
     vals.push(req.params.id);
     db.run('UPDATE workstations SET '+fields.join(',')+' WHERE id = ?', vals, function(err) {
-        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         if (!this.changes) { res.status(404).json({ error: '岗位不存在' }); return; }
         res.json({ success: true, message: '岗位更新成功' });
     });
@@ -682,7 +644,7 @@ app.put('/api/workstations/:id', (req, res) => {
 // 删除岗位
 app.delete('/api/workstations/:id', (req, res) => {
     db.run('DELETE FROM workstations WHERE id = ?', [req.params.id], function(err) {
-        if (err) { res.status(500).json({ error: err.message }); return; }
+        if (err) { res.status(500).json({ error: '服务器错误' }); return; }
         if (!this.changes) { res.status(404).json({ error: '岗位不存在' }); return; }
         res.json({ success: true, message: '岗位删除成功' });
     });
@@ -713,7 +675,7 @@ app.get('/api/stats', (req, res) => {
     queries.forEach((query, index) => {
         db.get(query, [], (err, row) => {
             if (err) {
-                res.status(500).json({ error: err.message });
+                res.status(500).json({ error: '服务器错误' });
                 return;
             }
             
@@ -739,7 +701,7 @@ app.get('/api/custom-hazard-tags', (req, res) => {
     const sql = 'SELECT * FROM custom_hazard_tags ORDER BY created_at DESC';
     db.all(sql, [], (err, rows) => {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         res.json(rows);
@@ -761,7 +723,7 @@ app.post('/api/custom-hazard-tags', (req, res) => {
             if (err.code === 'SQLITE_CONSTRAINT') {
                 res.status(409).json({ error: '标签ID已存在' });
             } else {
-                res.status(500).json({ error: err.message });
+                res.status(500).json({ error: '服务器错误' });
             }
             return;
         }
@@ -782,7 +744,7 @@ app.delete('/api/custom-hazard-tags/:tag_id', (req, res) => {
     const sql = 'DELETE FROM custom_hazard_tags WHERE tag_id = ?';
     db.run(sql, [tagId], function(err) {
         if (err) {
-            res.status(500).json({ error: err.message });
+            res.status(500).json({ error: '服务器错误' });
             return;
         }
         if (this.changes === 0) {
