@@ -743,57 +743,86 @@ app.post('/api/workstations/import', (req, res) => {
         });
 
         resolveScenes().then(() => {
-            const errors = [];
-            let pending = dataRows.length;
-            let success = 0, fail = 0;
-
-            if (!pending) {
-                try { fs.unlinkSync(req.file.path); } catch (_) {}
-                return res.json({ success: 0, fail: 0, errors: [] });
-            }
-
-            function checkDone() {
-                if (--pending > 0) return;
-                try { fs.unlinkSync(req.file.path); } catch (_) {}
-                res.json({ success, fail, errors });
-            }
-
-            dataRows.forEach((d, idx) => {
-                const sceneId = sceneIds[d.sceneCode];
-                if (!sceneId) {
-                    fail++;
-                    errors.push('第' + (idx + 2) + '行: 场景编码"' + d.sceneCode + '"不存在，请先创建场景');
-                    checkDone();
-                    return;
+            // query all existing codes to compute next available code numbers
+            db.all("SELECT workstation_code FROM workstations WHERE workstation_code LIKE 'WS-%'", (codeErr, existingCodes) => {
+                if (codeErr) {
+                    try { fs.unlinkSync(req.file.path); } catch (_) {}
+                    return res.status(500).json({ error: '服务器错误' });
                 }
 
-                // build notes from optional columns
-                const notesParts = [];
-                if (codeIdx >= 0 && String(d.row[codeIdx]).trim()) notesParts.push('编号: ' + String(d.row[codeIdx]).trim());
-                if (personIdx >= 0 && String(d.row[personIdx]).trim()) notesParts.push('责任人: ' + String(d.row[personIdx]).trim());
-                if (cycleIdx >= 0 && String(d.row[cycleIdx]).trim()) notesParts.push('作业周期: ' + String(d.row[cycleIdx]).trim());
-                if (volumeIdx >= 0 && String(d.row[volumeIdx]).trim()) notesParts.push('容积: ' + String(d.row[volumeIdx]).trim() + '立方米');
-                if (depthIdx >= 0 && String(d.row[depthIdx]).trim()) notesParts.push('深度: ' + String(d.row[depthIdx]).trim() + '米');
-                if (entranceIdx >= 0 && String(d.row[entranceIdx]).trim()) notesParts.push('入口数量: ' + String(d.row[entranceIdx]).trim());
-
-                // generate code
-                const wsCode = 'WS-' + (d.department || 'IMP') + '-' + String(idx + 1).padStart(3, '0');
-
-                db.run('INSERT INTO workstations (workstation_code, workstation_name, scene_id, department, location, notes) VALUES (?,?,?,?,?,?)',
-                    [wsCode, d.name, sceneId, d.department, d.location, notesParts.join(' | ')],
-                    function(insErr) {
-                        if (insErr) {
-                            fail++;
-                            if (insErr.code === 'SQLITE_CONSTRAINT') {
-                                errors.push('第' + (idx + 2) + '行: 岗位编码冲突或场景不存在');
-                            } else {
-                                errors.push('第' + (idx + 2) + '行: 导入失败');
-                            }
-                        } else {
-                            success++;
+                // group existing codes by prefix (WS-DEPT-) and find max number per prefix
+                const prefixMax = {};
+                (existingCodes || []).forEach(c => {
+                    const code = c.workstation_code || '';
+                    const m = code.match(/^WS-(.+?)-(\d+)$/);
+                    if (m) {
+                        const prefix = m[1];
+                        const num = parseInt(m[2]);
+                        if (!prefixMax[prefix] || num > prefixMax[prefix]) {
+                            prefixMax[prefix] = num;
                         }
+                    }
+                });
+
+                const prefixCounter = {};
+                // initialize counters from existing max
+                Object.keys(prefixMax).forEach(p => { prefixCounter[p] = prefixMax[p]; });
+
+                const errors = [];
+                let pending = dataRows.length;
+                let success = 0, fail = 0;
+
+                if (!pending) {
+                    try { fs.unlinkSync(req.file.path); } catch (_) {}
+                    return res.json({ success: 0, fail: 0, errors: [] });
+                }
+
+                function checkDone() {
+                    if (--pending > 0) return;
+                    try { fs.unlinkSync(req.file.path); } catch (_) {}
+                    res.json({ success, fail, errors });
+                }
+
+                dataRows.forEach((d, idx) => {
+                    const sceneId = sceneIds[d.sceneCode];
+                    if (!sceneId) {
+                        fail++;
+                        errors.push('第' + (idx + 2) + '行: 场景编码"' + d.sceneCode + '"不存在，请先创建场景');
                         checkDone();
-                    });
+                        return;
+                    }
+
+                    // build notes from optional columns
+                    const notesParts = [];
+                    if (codeIdx >= 0 && String(d.row[codeIdx]).trim()) notesParts.push('编号: ' + String(d.row[codeIdx]).trim());
+                    if (personIdx >= 0 && String(d.row[personIdx]).trim()) notesParts.push('责任人: ' + String(d.row[personIdx]).trim());
+                    if (cycleIdx >= 0 && String(d.row[cycleIdx]).trim()) notesParts.push('作业周期: ' + String(d.row[cycleIdx]).trim());
+                    if (volumeIdx >= 0 && String(d.row[volumeIdx]).trim()) notesParts.push('容积: ' + String(d.row[volumeIdx]).trim() + '立方米');
+                    if (depthIdx >= 0 && String(d.row[depthIdx]).trim()) notesParts.push('深度: ' + String(d.row[depthIdx]).trim() + '米');
+                    if (entranceIdx >= 0 && String(d.row[entranceIdx]).trim()) notesParts.push('入口数量: ' + String(d.row[entranceIdx]).trim());
+
+                    // generate unique code: WS-{dept}-{auto-increment-number}
+                    const prefix = d.department || 'IMP';
+                    if (!prefixCounter[prefix]) prefixCounter[prefix] = prefixMax[prefix] || 0;
+                    prefixCounter[prefix]++;
+                    const wsCode = 'WS-' + prefix + '-' + String(prefixCounter[prefix]).padStart(3, '0');
+
+                    db.run('INSERT INTO workstations (workstation_code, workstation_name, scene_id, department, location, notes) VALUES (?,?,?,?,?,?)',
+                        [wsCode, d.name, sceneId, d.department, d.location, notesParts.join(' | ')],
+                        function(insErr) {
+                            if (insErr) {
+                                fail++;
+                                if (insErr.code === 'SQLITE_CONSTRAINT') {
+                                    errors.push('第' + (idx + 2) + '行: 岗位编码"' + wsCode + '"已存在');
+                                } else {
+                                    errors.push('第' + (idx + 2) + '行: 导入失败');
+                                }
+                            } else {
+                                success++;
+                            }
+                            checkDone();
+                        });
+                });
             });
         }).catch(e => {
             try { fs.unlinkSync(req.file.path); } catch (_) {}
