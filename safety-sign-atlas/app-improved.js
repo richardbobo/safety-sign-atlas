@@ -1070,11 +1070,28 @@ function renderSceneTable(scenes) {
         var tags='';
         if(s.hazard_tags){s.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){var tid=t.trim();var n=getHazardTagName(tid);var c=getHazardTagColor(tid);tags+='<span style="display:inline-block;background:'+c+'20;color:'+c+';border:1px solid '+c+';padding:1px 6px;border-radius:8px;font-size:0.7rem;margin:1px;">'+n+'</span>';});}
         var wsInfo='';
-        if(s.workstation_count>0){wsInfo='<span style="color:#6366f1;font-weight:600;">'+s.workstation_count+'个</span> <span style="font-size:0.7rem;color:#6b7280;">'+escapeHtml((s.workstations||[]).map(function(w){return w.workstation_name;}).join('、'))+'</span>';}else{wsInfo='<span style="color:#d1d5db;">无</span>';}
+        var wss = s.workstations || [];
+        if(wss.length > 0){
+            var top3 = wss.slice(0, 3).map(function(w){ return w.workstation_name; }).join('、');
+            var more = wss.length > 3 ? '... 等' + wss.length + '个岗位' : '';
+            wsInfo = '<span style="color:#6366f1;font-weight:600;">' + wss.length + '个</span> ' +
+                     '<span style="font-size:0.7rem;color:#6b7280;">' + escapeHtml(top3) + '</span> ' +
+                     (more ? '<span style="font-size:0.7rem;color:#9ca3af;">' + escapeHtml(more) + '</span>' : '');
+        } else {
+            wsInfo='<span style="color:#d1d5db;">无</span>';
+        }
         var signs=s.signs||[];
         var imgs='';
-        if(signs.length>0){signs.slice(0,5).forEach(function(sg){if(sg.image_url){imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;" onerror="this.style.display=\'none\'">';}});if(signs.length>5) imgs+='<span style="font-size:0.7rem;color:#9ca3af;">+'+ (signs.length-5)+'</span>';}
-        else imgs='<span style="color:#9ca3af;font-size:0.7rem;">无</span>';
+        if(signs.length>0){
+            signs.slice(0,3).forEach(function(sg){
+                if(sg.image_url){
+                    imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;background:#fff;" onerror="this.style.display=\'none\'" title="'+escapeHtml(sg.sign_name)+'">';
+                }
+            });
+            if(signs.length>3) imgs+='<span style="display:inline-block;vertical-align:middle;font-size:0.65rem;color:#9ca3af;margin-left:2px;">+'+(signs.length-3)+'</span>';
+        } else {
+            imgs='<span style="color:#9ca3af;font-size:0.7rem;">无</span>';
+        }
         h+='<tr>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;">'+escapeHtml(s.scene_code)+'</td>'+
             '<td style="padding:6px 10px;border:1px solid #e5e7eb;"><b>'+escapeHtml(s.scene_name)+'</b></td>'+
