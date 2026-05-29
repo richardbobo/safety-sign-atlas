@@ -147,28 +147,29 @@ Promise.all([
         libRows+='<tr><td>'+typeNames[e[0]]+'</td><td>'+e[1]+'</td><td>'+bar('',Math.round(e[1]/maxLib*100),e[0])+'</td></tr>';
     });
 
-    // Sign usage: count by workstation coverage
+    // Sign usage: 使用数量 = 关联此标志的岗位总数，覆盖岗位 = 关联此标志的岗位数（去重场景）
     var signUsage={};
-    var countedWsScenes={};
-    workstations.forEach(function(w){
-        if(countedWsScenes[w.scene_id]) return;
-        countedWsScenes[w.scene_id]=true;
-        var scene=sceneMap[w.scene_id];
-        if(!scene) return;
-        (scene.signs||[]).forEach(function(sg){
-            var key=sg.sign_name||sg.sign_code;
-            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,image_url:sg.image_url,count:0,workstations:0};
-            signUsage[key].count++;
-        });
-    });
-    // Count workstations per sign
+    // 统计每个标志关联的岗位总数（使用数量）
     workstations.forEach(function(w){
         var scene=sceneMap[w.scene_id];
         if(!scene) return;
         var counted={};
         (scene.signs||[]).forEach(function(sg){
             var key=sg.sign_name||sg.sign_code;
-            if(!counted[key]){ counted[key]=true; if(signUsage[key]) signUsage[key].workstations++; }
+            if(!signUsage[key]) signUsage[key]={name:sg.sign_name,code:sg.sign_code,type:sg.sign_type,image_url:sg.image_url,count:0,workstations:0};
+            if(!counted[key]){ counted[key]=true; signUsage[key].count++; }  // 每个岗位同一标志只计1次
+        });
+    });
+    // 统计每个标志覆盖的场景数
+    var signSceneCount={};
+    workstations.forEach(function(w){
+        var scene=sceneMap[w.scene_id];
+        if(!scene) return;
+        var sceneKey=w.scene_id;
+        if(!signSceneCount[sceneKey]) signSceneCount[sceneKey]={};
+        (scene.signs||[]).forEach(function(sg){
+            var key=sg.sign_name||sg.sign_code;
+            if(!signSceneCount[sceneKey][key]){ signSceneCount[sceneKey][key]=true; if(signUsage[key]) signUsage[key].workstations++; }
         });
     });
     var signUsageArr=Object.values(signUsage).sort(function(a,b){return b.count-a.count;});
@@ -176,7 +177,7 @@ Promise.all([
     var usageRows='';
     signUsageArr.forEach(function(u,i){
         var imgTag=u.image_url?'<img src="'+u.image_url+'" style="width:40px;height:40px;object-fit:contain;border-radius:4px;background:#f9fafb;border:1px solid #e5e7eb;" onerror="this.style.display=\'none\'">':'';
-        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+escapeHtml(u.name)+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+escapeHtml(u.code)+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'张</td><td>'+u.workstations+'个岗位</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
+        usageRows+='<tr><td>'+(i+1)+'</td><td style=text-align:center;>'+imgTag+'</td><td><b>'+escapeHtml(u.name)+'</b><span style=color:#9ca3af;font-size:0.75rem;margin-left:6px;>'+escapeHtml(u.code)+'</span></td><td>'+typeNames[u.type]+'</td><td>'+u.count+'个岗位</td><td>'+u.workstations+'个场景</td><td>'+bar('',Math.round(u.count/maxUse*100),u.type)+'</td></tr>';
     });
 
     var html=
@@ -197,7 +198,7 @@ Promise.all([
             '<div class=section><h2>工作岗位已配置标志类型分布</h2><table><thead><tr><th>类型</th><th>数量</th><th>占比</th></tr></thead><tbody>'+cfgRows+'</tbody></table></div>'+
         '</div>'+
 
-        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>缩略图</th><th>标志名称</th><th>类型</th><th>使用数量</th><th>覆盖岗位</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=7>暂无数据</td></tr>')+'</tbody></table></div>'+
+        '<div class=section><h2>安全标志使用频率统计</h2><table><thead><tr><th>排名</th><th>缩略图</th><th>标志名称</th><th>类型</th><th>使用数量(岗位)</th><th>覆盖场景</th><th>占比</th></tr></thead><tbody>'+(usageRows||'<tr><td colspan=7>暂无数据</td></tr>')+'</tbody></table></div>'+
 
         '<div class=charts>'+
             '<div class=section><h2>岗位最多的场景 (Top 10)</h2><table><thead><tr><th>场景</th><th>部门</th><th>岗位数</th></tr></thead><tbody>'+
