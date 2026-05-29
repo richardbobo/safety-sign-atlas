@@ -383,6 +383,75 @@
             opacity: 1;
             transform: scale(1.1);
         }
+        @media (max-width:768px){
+            .container{padding:8px;}
+            .header{padding:14px 10px;}
+            .header h1{font-size:1.1rem;}
+            .nav{gap:4px;padding:8px 10px;}
+            .nav button{padding:6px 10px;font-size:0.75rem;min-height:40px;}
+            .sign-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
+            .btn{padding:10px 16px;min-height:44px;}
+            .type-selector{grid-template-columns:1fr;gap:10px;}
+            .step-indicator{flex-wrap:wrap;gap:8px;}
+            .step{padding:6px;}
+            .step-title{font-size:0.75rem;}
+            .step-number{width:26px;height:26px;line-height:26px;font-size:0.8rem;}
+            .scene-card{padding:14px;}
+            .scene-header{flex-direction:column;gap:10px;}
+            .scene-actions{flex-wrap:wrap;}
+            .action-btn{padding:8px 12px;font-size:0.8rem;min-height:40px;}
+            .btn-delete{min-width:40px;min-height:40px;}
+            .form-control{padding:10px 12px;font-size:1rem;}
+            input[type=text],input[type=number],textarea,select{font-size:1rem!important;}
+            .upload-area{padding:20px 15px;}
+            .sign-card{padding:10px;}
+            .sign-image{height:100px;}
+            .add-signs-modal .add-signs-content{width:95%;padding:16px;max-height:90vh;}
+            .add-signs-modal [style*=\"grid-template-columns: 1fr 1fr\"]{
+                display:flex!important;flex-direction:column;height:auto!important;gap:12px;
+            }
+            .add-signs-modal [style*=\"border-right\"]{border-right:none!important;padding-right:0!important;border-bottom:1px solid #e9ecef;padding-bottom:12px;}
+            #sign-selector-container{height:200px!important;}
+            #sign-preview-container{height:120px!important;}
+            #add-sign-form [style*=\"display: flex; gap: 20px\"]{flex-direction:column;}
+            #sceneDetailModal [style*=\"display:flex;gap:18px\"]{flex-direction:column!important;}
+            #sceneDetailModal [style*=\"flex:0 0 40%\"]{flex:auto!important;}
+            .step-buttons{gap:6px;flex-wrap:wrap;}
+            .step-buttons .btn{flex:1;min-width:60px;}
+            input#scene-search-input{width:100%!important;max-width:100%;}
+            .scene-stats{flex-wrap:wrap;gap:12px;}
+            .signs-preview-grid{grid-template-columns:repeat(auto-fill,minmax(50px,1fr));}
+        }
+        @media (max-width:480px){
+            .sign-grid{grid-template-columns:1fr 1fr;gap:8px;}
+            .sign-card{padding:8px;}
+            .sign-image{height:80px;}
+            .header h1{font-size:0.95rem;}
+            .action-btn{font-size:0.7rem;padding:6px 8px;}
+        }
+        @media (hover:hover){
+            .btn:hover{background:#5a67d8;}
+            .btn-success:hover{background:#38a169;}
+            .btn-secondary:hover{background:#5a6268;}
+            .sign-card:hover{border-color:#667eea;transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,0,0,0.1);}
+            .nav button:hover{background:#667eea10;}
+            .upload-area:hover{background:#e9ecef;}
+            .btn-delete:hover{color:#e53e3e;background:#fed7d7;transform:scale(1.1);}
+            .type-option:hover{border-color:#667eea;background:#f0f9ff;}
+            .action-btn.btn-view:hover{background:#bfdbfe;}
+            .action-btn.btn-edit:hover{background:#fde68a;}
+            .action-btn.btn-delete-scene:hover{background:#fecaca;}
+            .action-btn.btn-add-sign:hover{background:#a7f3d0;}
+            .scene-card:hover{transform:translateY(-4px);box-shadow:0 8px 25px rgba(0,0,0,0.12);border-color:#2c80ff;}
+            .sign-card-selectable:hover{border-color:#007bff;transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,123,255,0.1);}
+            .add-sign-btn:hover{background:#0056b3!important;transform:scale(1.1);}
+            .remove-preview-btn:hover{opacity:1;transform:scale(1.1);}
+            .preview-sign-item:hover{transform:scale(1.05);}
+            .remove-sign-btn:hover{background:#c82333;}
+            .btn-close:hover{color:#333;}
+            .sign-type-filter:hover{border-color:#007bff;}
+            .custom-tag button:hover{color:white;background:rgba(255,255,255,0.2);border-radius:50%;}
+        }
     </style>
 </head>
 <body>

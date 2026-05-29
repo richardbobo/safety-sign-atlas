@@ -1057,7 +1057,7 @@ function filterScenes() {
 function renderSceneTable(scenes) {
     var c = document.getElementById('scenes-container');
     if (!scenes.length) { c.innerHTML = '<div class="message">暂无场景数据</div>'; return; }
-    var h = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:#f3f4f6;">'+
+    var h = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;min-width:750px;"><thead><tr style="background:#f3f4f6;">'+
         '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">场景编号</th>'+
         '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">场景名称</th>'+
         '<th style="padding:8px 10px;border:1px solid #d1d5db;text-align:left;">部门</th>'+
@@ -1107,7 +1107,7 @@ function renderSceneTable(scenes) {
                 '<button onclick="confirmDeleteScene('+s.id+',\''+escapeHtml(s.scene_code)+'\',\''+escapeHtml(s.scene_name||'').replace(/'/g,"\\'")+'\')" style="background:#dc3545;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:0.7rem;">删除</button>'+
             '</td></tr>';
     });
-    h+='</tbody></table>';
+    h+='</tbody></table></div>';
     c.innerHTML=h;
 }
 

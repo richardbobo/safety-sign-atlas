@@ -34,6 +34,32 @@ tr:nth-child(even) td{background:#f9fafb;}
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.7rem;margin:1px 2px;font-weight:500;}
 .loading{text-align:center;padding:40px;color:#9ca3af;}
+@media (max-width:768px){
+    .container{padding:10px;}
+    .header{padding:14px 10px;}
+    .header h1{font-size:1.1rem;}
+    .nav{gap:4px;padding:8px 10px;}
+    .nav button{padding:6px 10px;font-size:0.75rem;}
+    .cards{grid-template-columns:repeat(2,1fr);gap:8px;}
+    .card{padding:12px 10px;}
+    .card .num{font-size:1.4rem;}
+    .charts{grid-template-columns:1fr;}
+    .section{padding:10px 12px;overflow-x:auto;}
+    .section h2{font-size:0.9rem;}
+    table{font-size:0.75rem;min-width:600px;}
+    th,td{padding:4px 6px;}
+    .bar-wrap{gap:4px;}
+    .bar{height:14px;}
+}
+@media (max-width:480px){
+    .cards{grid-template-columns:1fr 1fr;gap:6px;}
+    .card .num{font-size:1.2rem;}
+    .nav button{font-size:0.7rem;padding:5px 8px;}
+    table{font-size:0.7rem;}
+}
+@media (hover:hover){
+    .nav button:hover{background:#667eea10;}
+}
 </style>
 </head>
 <body>
