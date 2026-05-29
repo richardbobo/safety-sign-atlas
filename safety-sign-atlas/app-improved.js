@@ -1083,12 +1083,12 @@ function renderSceneTable(scenes) {
         var signs=s.signs||[];
         var imgs='';
         if(signs.length>0){
+            imgs='<span style="font-weight:600;color:#1a56db;">'+signs.length+'个</span> ';
             signs.slice(0,3).forEach(function(sg){
                 if(sg.image_url){
-                    imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;background:#fff;" onerror="this.style.display=\'none\'" title="'+escapeHtml(sg.sign_name)+'">';
+                    imgs+='<img src="'+sg.image_url+'" style="width:32px;height:32px;object-fit:contain;border:1px solid #e5e7eb;border-radius:3px;margin:1px;background:#fff;vertical-align:middle;" onerror="this.style.display=\'none\'" title="'+escapeHtml(sg.sign_name)+'">';
                 }
             });
-            if(signs.length>3) imgs+='<span style="display:inline-block;vertical-align:middle;font-size:0.65rem;color:#9ca3af;margin-left:2px;">+'+(signs.length-3)+'</span>';
         } else {
             imgs='<span style="color:#9ca3af;font-size:0.7rem;">无</span>';
         }
