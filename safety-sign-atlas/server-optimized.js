@@ -7,7 +7,7 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 
 const app = express();
-const PORT = Number(process.env.PORT) || 8000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // 中间件
 app.use(cors());
