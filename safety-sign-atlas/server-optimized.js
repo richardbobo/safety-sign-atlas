@@ -944,20 +944,34 @@ app.post('/api/custom-hazard-tags', (req, res) => {
 // 删除自定义危险源标签
 app.delete('/api/custom-hazard-tags/:tag_id', (req, res) => {
     const tagId = req.params.tag_id;
-    
-    const sql = 'DELETE FROM custom_hazard_tags WHERE tag_id = ?';
-    db.run(sql, [tagId], function(err) {
-        if (err) {
-            res.status(500).json({ error: '服务器错误' });
-            return;
-        }
-        if (this.changes === 0) {
-            res.status(404).json({ error: '标签不存在' });
-            return;
-        }
-        res.json({ 
-            message: '自定义标签删除成功',
-            deleted_count: this.changes
+
+    // 先检查标签是否存在
+    db.get('SELECT tag_id FROM custom_hazard_tags WHERE tag_id = ?', [tagId], (err, row) => {
+        if (err) { return res.status(500).json({ error: '服务器错误' }); }
+        if (!row) { return res.status(404).json({ error: '标签不存在' }); }
+
+        // 删除标签
+        db.run('DELETE FROM custom_hazard_tags WHERE tag_id = ?', [tagId], function(delErr) {
+            if (delErr) { return res.status(500).json({ error: '服务器错误' }); }
+
+            // 清理所有场景中引用此标签的记录
+            db.all(\"SELECT id, hazard_tags FROM scenes_new WHERE hazard_tags LIKE '%' || ? || '%'\", [tagId], (scanErr, scenes) => {
+                if (scanErr) {
+                    // 清理失败不影响删除结果，仅记录日志
+                    console.error('清理场景标签引用失败:', scanErr.message);
+                } else {
+                    (scenes || []).forEach(scene => {
+                        const tags = (scene.hazard_tags || '').split(',').filter(t => t.trim() && t.trim() !== tagId);
+                        const cleaned = tags.join(',');
+                        db.run('UPDATE scenes_new SET hazard_tags = ? WHERE id = ?', [cleaned, scene.id]);
+                    });
+                }
+            });
+
+            res.json({
+                message: '自定义标签删除成功',
+                deleted_count: this.changes
+            });
         });
     });
 });
