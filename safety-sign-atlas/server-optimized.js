@@ -117,10 +117,32 @@ function initializeDatabase() {
     db.run('CREATE INDEX IF NOT EXISTS idx_workstations_scene ON workstations(scene_id)');
     db.run('CREATE INDEX IF NOT EXISTS idx_workstations_dept ON workstations(department)', (err) => {
         if (err) { console.error('index creation failed:', err.message); return; }
-        migrateJsonDataIfNeeded();
+        migrateJsonDataIfNeeded().then(() => cleanupOrphanedTags());
     });
     });
     console.log('数据库表初始化完成');
+}
+
+// 启动时清理场景中已不存在的自定义标签引用
+async function cleanupOrphanedTags() {
+    try {
+        const scenes = await allSql("SELECT id, scene_name, hazard_tags FROM scenes_new WHERE hazard_tags LIKE '%custom_%'");
+        if (!scenes.length) return;
+        const existingTags = await allSql('SELECT tag_id FROM custom_hazard_tags');
+        const existingIds = new Set(existingTags.map(t => t.tag_id));
+        let cleaned = 0;
+        for (const scene of scenes) {
+            const tags = (scene.hazard_tags || '').split(',').map(t => t.trim()).filter(Boolean);
+            const orphaned = tags.filter(t => t.startsWith('custom_') && !existingIds.has(t));
+            if (orphaned.length > 0) {
+                const valid = tags.filter(t => !t.startsWith('custom_') || existingIds.has(t));
+                await runSql('UPDATE scenes_new SET hazard_tags = ? WHERE id = ?', [valid.join(','), scene.id]);
+                console.log('清理孤立标签:', scene.scene_name, '移除:', orphaned.join(', '));
+                cleaned++;
+            }
+        }
+        if (cleaned > 0) console.log('启动清理完成:', cleaned, '个场景的孤立标签已移除');
+    } catch (e) { /* 清理失败不影响正常运行 */ }
 }
 
 // 文件上传配置
@@ -955,7 +977,7 @@ app.delete('/api/custom-hazard-tags/:tag_id', (req, res) => {
             if (delErr) { return res.status(500).json({ error: '服务器错误' }); }
 
             // 清理所有场景中引用此标签的记录
-            db.all(\"SELECT id, hazard_tags FROM scenes_new WHERE hazard_tags LIKE '%' || ? || '%'\", [tagId], (scanErr, scenes) => {
+            db.all("SELECT id, hazard_tags FROM scenes_new WHERE hazard_tags LIKE '%' || ? || '%'", [tagId], (scanErr, scenes) => {
                 if (scanErr) {
                     // 清理失败不影响删除结果，仅记录日志
                     console.error('清理场景标签引用失败:', scanErr.message);
