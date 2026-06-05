@@ -60,12 +60,14 @@
     <button class="btn-pdf" onclick="downloadPDF()">📥 下载PDF</button>
     <button class="btn-print" onclick="window.print()">🖨️ 打印</button>
 </div>
+<div id="contentArea">
 <div class="report-title">
     <h1>工作岗位安全标志配置汇总</h1>
     <div class="sub"><span id="timeStr"></span> | 共 <b id="totalCount">0</b> 个岗位</div>
 </div>
 <div id="content"></div>
 <div class="footer" id="footer"></div>
+</div>
 
 <script>
 var API='/api';
@@ -153,17 +155,29 @@ Promise.all(ids.map(function(id){
 });
 
 function downloadPDF(){
-    document.querySelector('.toolbar').style.display='none';
-    var el=document.body;
-    var opt={
-        margin: [0.3, 0.3, 0.3, 0.3],
-        filename: '安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
-        image: {type:'jpeg',quality:0.95},
-        html2canvas: {scale:2, useCORS:true, logging:false},
-        jsPDF: {unit:'in', format:'a4', orientation:'portrait'}
-    };
-    html2pdf().set(opt).from(el).save().then(function(){
-        document.querySelector('.toolbar').style.display='';
+    var btn=document.querySelector('.toolbar');
+    btn.style.display='none';
+    // Wait for all images to load before capturing
+    var imgs=document.querySelectorAll('img');
+    var promises=[];
+    imgs.forEach(function(img){
+        if(!img.complete){
+            promises.push(new Promise(function(resolve){
+                img.onload=img.onerror=resolve;
+            }));
+        }
+    });
+    Promise.all(promises).then(function(){
+        var el=document.getElementById('contentArea');
+        var opt={
+            margin: 0.2,
+            filename: '安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
+            image: {type:'jpeg',quality:0.95},
+            html2canvas: {scale:2, useCORS:true, allowTaint:true},
+            jsPDF: {unit:'in', format:'a4', orientation:'portrait'},
+            pagebreak: {mode:'avoid-all'}
+        };
+        html2pdf().set(opt).from(el).save().then(function(){ btn.style.display=''; });
     });
 }
 </script>
