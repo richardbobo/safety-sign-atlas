@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>批量工作岗位安全标志配置</title>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Microsoft YaHei','SimHei',Arial,sans-serif;color:#333;padding:24px 28px;max-width:960px;margin:0 auto;}
+    .report-title{text-align:center;border-bottom:3px solid #1a56db;padding-bottom:14px;margin-bottom:20px;}
+    .report-title h1{font-size:22px;color:#1e3a5f;margin-bottom:6px;}
+    .report-title .sub{font-size:12px;color:#6b7280;}
+
+    .ws-section{page-break-inside:avoid;margin-bottom:28px;border:1.5px solid #e5e7eb;border-radius:8px;padding:16px 18px;}
+    .ws-header{border-bottom:1.5px solid #1a56db;padding-bottom:8px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;}
+    .ws-header .ws-name{font-size:16px;font-weight:700;color:#1e3a5f;}
+    .ws-header .ws-code{font-size:11px;color:#6b7280;}
+    .ws-header .ws-scene{font-size:11px;color:#1a56db;}
+
+    .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;margin:1px 3px;font-weight:500;}
+
+    .main{display:flex;gap:16px;}
+    .left{flex:0 0 38%;}
+    .left .scene-img{border:1px solid #e5e7eb;border-radius:6px;padding:4px;background:#f9fafb;text-align:center;}
+    .left .scene-img img{width:100%;max-height:200px;object-fit:contain;border-radius:4px;}
+    .left .scene-img .placeholder{color:#9ca3af;padding:40px 0;font-size:12px;}
+
+    .right{flex:1;display:flex;flex-direction:column;gap:8px;}
+    .signs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+    .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
+    .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
+    .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;text-align:center;}
+    .sign-card img{width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;}
+    .sign-card .sign-label{font-size:8px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .info-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;}
+    .info-table td{padding:2px 6px;border:1px solid #e5e7eb;}
+    .info-table td:first-child{background:#f3f4f6;font-weight:600;width:70px;color:#374151;}
+    .info-table td:last-child{color:#4b5563;}
+
+    .footer{border-top:1px solid #e5e7eb;padding-top:8px;font-size:10px;color:#9ca3af;text-align:center;margin-top:16px;}
+
+    @media print{
+        body{padding:12px 16px;max-width:100%;}
+        .ws-section{break-inside:avoid;margin-bottom:16px;padding:12px 14px;}
+        .main{gap:10px;}
+        .sign-card img{height:80px;}
+        .signs-grid{gap:4px;}
+    }
+</style>
+</head>
+<body>
+<div class="report-title">
+    <h1>工作岗位安全标志配置汇总</h1>
+    <div class="sub"><span id="timeStr"></span> | 共 <b id="totalCount">0</b> 个岗位</div>
+</div>
+<div id="content"></div>
+<div class="footer" id="footer"></div>
+
+<script>
+var API='/api';
+var ids=(new URLSearchParams(window.location.search).get('ids')||'').split(',').filter(Boolean);
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+if (!ids.length) { document.body.innerHTML='<h3 style=padding:40px;text-align:center;color:#999;>未选择工作岗位</h3>'; }
+
+var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
+var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c',fall:'#059669',noise:'#b91c1c',dust:'#92400e',radiation:'#a21caf',high_temp:'#ea580c',low_temp:'#0891b2',slippery:'#ca8a04',confined:'#6d28d9'};
+
+function sortSignsByType(signs) {
+    if (!signs || !Array.isArray(signs)) return [];
+    var o = { warning:1, prohibition:2, instruction:3, information:4 };
+    return signs.slice().sort(function(a,b) { return (o[a.sign_type]||99)-(o[b.sign_type]||99); });
+}
+
+function renderWorkstation(ws, scene) {
+    var tagsHtml='';
+    if (scene.hazard_tags) {
+        scene.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){
+            t=t.trim(); var n=tm[t]||(t.startsWith('custom_')?'已删除':t); var c=tc[t]||'#667eea';
+            tagsHtml+='<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+escapeHtml(n)+'</span>';
+        });
+    }
+
+    var sceneImg=scene.scene_image_url
+        ? '<img src="'+scene.scene_image_url+'" alt=场景图片 onerror="this.style.display=\'none\'">'
+        : '<div class=placeholder>暂无场景图片</div>';
+
+    var signs=sortSignsByType(scene.signs||[]);
+    var gridClass=signs.length<=4?'col2':signs.length<=8?'col3':'';
+    var signsHtml=signs.length
+        ? signs.map(function(s){
+            var img=s.image_url?'<img src="'+escapeHtml(s.image_url)+'" onerror="this.style.display=\'none\'" alt="'+escapeHtml(s.sign_name)+'">':'<div style=height:90px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.7rem;>无图</div>';
+            return '<div class=sign-card>'+img+'<div class=sign-label>'+escapeHtml(s.sign_code)+'</div></div>';
+        }).join('')
+        : '<div style=color:#9ca3af;font-size:0.8rem;text-align:center;padding:20px;>该场景暂无安全标志</div>';
+
+    var typeNames={warning:'警告',prohibition:'禁止',instruction:'指令',information:'提示'};
+    var typeCounts={}; signs.forEach(function(s){typeCounts[s.sign_type]=(typeCounts[s.sign_type]||0)+1;});
+    var typeBadges=Object.entries(typeCounts).map(function(e){return '<span style=display:inline-block;padding:1px 6px;border-radius:4px;font-size:0.7rem;margin:1px;background:#e0e7ff;color:#3730a3;>'+typeNames[e[0]]+': '+e[1]+'</span>';}).join('');
+
+    return '<div class=ws-section>'+
+        '<div class=ws-header>'+
+            '<div><div class=ws-name>'+escapeHtml(ws.workstation_name)+'</div>'+
+            '<div class=ws-code>'+escapeHtml(ws.workstation_code)+' | '+escapeHtml(ws.department||'')+' | '+escapeHtml(ws.location||'')+'</div></div>'+
+            '<div class=ws-scene>场景: '+escapeHtml(scene.scene_name)+' ('+escapeHtml(scene.scene_code)+') &nbsp; 标志: '+signs.length+'个 '+typeBadges+'</div>'+
+        '</div>'+
+        (tagsHtml?'<div style=margin-bottom:8px;>'+tagsHtml+'</div>':'')+
+        '<div class=main>'+
+            '<div class=left><div class=scene-img>'+sceneImg+'</div>'+
+            '<table class=info-table>'+
+            '<tr><td>岗位编码</td><td>'+escapeHtml(ws.workstation_code)+'</td></tr>'+
+            '<tr><td>所属部门</td><td>'+escapeHtml(ws.department||'未设置')+'</td></tr>'+
+            '<tr><td>具体位置</td><td>'+escapeHtml(ws.location||'未设置')+'</td></tr>'+
+            '<tr><td>备注</td><td>'+escapeHtml(ws.notes||'无')+'</td></tr></table></div>'+
+            '<div class=right><div class="signs-grid '+gridClass+'">'+signsHtml+'</div></div>'+
+        '</div></div>';
+}
+
+// Load all workstations
+var now=new Date();
+var ts=now.getFullYear()+'/'+(now.getMonth()+1)+'/'+now.getDate()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+document.getElementById('timeStr').textContent=ts;
+document.getElementById('totalCount').textContent=ids.length;
+document.getElementById('footer').textContent='安全标志图集管理系统 | '+ts;
+
+Promise.all(ids.map(function(id){
+    return fetch(API+'/workstations/'+id).then(function(r){return r.json();}).then(function(ws){
+        return fetch(API+'/scenes/'+ws.scene_id).then(function(r){return r.json();}).then(function(scene){
+            return {ws:ws, scene:scene};
+        });
+    });
+})).then(function(results){
+    var html='';
+    results.forEach(function(r){ html+=renderWorkstation(r.ws, r.scene); });
+    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>';
+}).catch(function(e){
+    document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
+});
+</script>
+</body>
+</html>
