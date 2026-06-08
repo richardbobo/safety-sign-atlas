@@ -640,15 +640,11 @@ app.get('/api/workstations/pdf', (req, res) => {
             var data = JSON.stringify(rows);
             var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
             html = html.replace('</body>', '<script>window.__PRELOADED__=' + data + ';</script></body>');
-            var tmpFile = path.join(__dirname, 'data', 'print-tmp-' + Date.now() + '.html');
-            fs.writeFileSync(tmpFile, html);
-
             const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
             const page = await browser.newPage();
-            await page.goto('file:///' + tmpFile.replace(/\\/g, '/'), { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
             const pdf = await page.pdf({ format: 'A4', margin: { top: '8mm', bottom: '8mm', left: '6mm', right: '6mm' }, printBackground: true });
             await browser.close();
-            try { fs.unlinkSync(tmpFile); } catch(e) {}
 
             res.setHeader('Content-Type', 'application/pdf');
             var filename = '安全标志配置汇总_' + new Date().toISOString().slice(0,10) + '.pdf';
