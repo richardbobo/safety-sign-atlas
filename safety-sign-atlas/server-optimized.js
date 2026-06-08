@@ -637,21 +637,23 @@ app.get('/api/workstations/pdf', (req, res) => {
                 try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
                 delete r.signs_json;
             });
-            // Use file:// paths so puppeteer loads images directly from disk (no network)
-            var uploadsPath = 'file:///' + path.join(__dirname, 'uploads').replace(/\\/g, '/') + '/';
-            var data = JSON.stringify(rows).replace(/\/uploads\//g, uploadsPath);
+            var data = JSON.stringify(rows);
             var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
             // Inject preloaded data + override ids
             html = html.replace('<script>', '<script>window.__PRELOADED__=' + data + ';');
             html = html.replace('var ids=(new URLSearchParams', 'var ids=' + JSON.stringify(ids) + ';//');
-            // Fix relative image URLs → file:// for instant disk access
-            html = html.replace(/src="\/uploads\//g, 'src="' + uploadsPath);
-            html = html.replace(/url\(\/uploads\//g, 'url(' + uploadsPath);
+
+            // Write to temp file, serve via local HTTP so relative image paths resolve
+            var tmpName = 'print-tmp-' + Date.now() + '.html';
+            var tmpFile = path.join(__dirname, 'data', tmpName);
+            fs.writeFileSync(tmpFile, html);
+
             const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
             const page = await browser.newPage();
-            await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+            await page.goto('http://localhost:' + PORT + '/data/' + tmpName, { waitUntil: 'networkidle2', timeout: 30000 });
             const pdf = await page.pdf({ format: 'A4', margin: { top: '8mm', bottom: '8mm', left: '6mm', right: '6mm' }, printBackground: true });
             await browser.close();
+            try { fs.unlinkSync(tmpFile); } catch(e) {}
 
             res.setHeader('Content-Type', 'application/pdf');
             var filename = '安全标志配置汇总_' + new Date().toISOString().slice(0,10) + '.pdf';
