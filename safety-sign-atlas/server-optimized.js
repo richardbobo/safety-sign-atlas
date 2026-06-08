@@ -645,7 +645,7 @@ app.get('/api/workstations/pdf', (req, res) => {
 
             const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
             const page = await browser.newPage();
-            await page.goto('file:///' + tmpFile.replace(/\\/g, '/'), { waitUntil: 'networkidle0', timeout: 30000 });
+            await page.goto('file:///' + tmpFile.replace(/\\/g, '/'), { waitUntil: 'domcontentloaded', timeout: 15000 });
             const pdf = await page.pdf({ format: 'A4', margin: { top: '8mm', bottom: '8mm', left: '6mm', right: '6mm' }, printBackground: true });
             await browser.close();
             try { fs.unlinkSync(tmpFile); } catch(e) {}
