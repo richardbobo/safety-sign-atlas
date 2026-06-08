@@ -404,7 +404,11 @@ function printSelectedWS(){
     var ids=[];
     document.querySelectorAll('.ws-check:checked').forEach(function(cb){ids.push(cb.value);});
     if(!ids.length){showMsg('error','请先勾选至少一个工作岗位');return;}
-    window.open('/print-workstations-batch.html?ids='+ids.join(','),'_blank');
+    var batch=10;
+    for(var i=0;i<ids.length;i+=batch){
+        var chunk=ids.slice(i,i+batch);
+        setTimeout(function(c){window.open('/print-workstations-batch.html?ids='+c.join(','),'_blank');},i*300,chunk);
+    }
 }
 
 function generateBOM(){
