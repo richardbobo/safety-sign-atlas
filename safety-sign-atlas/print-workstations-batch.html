@@ -31,8 +31,7 @@
     .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
     .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
     .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
-    .sign-card .sign-img-wrap{width:100%;height:80px;display:flex;align-items:center;justify-content:center;background:#f9fafb;border-radius:3px;overflow:hidden}
-    .sign-card img{width:100%;height:100%;object-fit:contain}
+    .sign-card .sign-img-wrap{width:100%;height:80px;background-color:#f9fafb;background-size:contain;background-repeat:no-repeat;background-position:center;border-radius:3px}
     .sign-card .no-img{width:100%;height:80px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.65rem;background:#f9fafb;border-radius:3px}
 
     .info-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;}
@@ -109,7 +108,7 @@ function renderWorkstation(r) {
     var gridClass=signs.length<=4?'col2':signs.length<=8?'col3':'';
     var signsHtml=signs.length
         ? signs.map(function(s){
-            var img=s.image_url?'<div class=sign-img-wrap><img src="'+escapeHtml(s.image_url)+'" onerror="this.parentElement.innerHTML=\'<div class=no-img>无图</div>\'" alt="'+escapeHtml(s.sign_name)+'"></div>':'<div class=sign-img-wrap><div class=no-img>无图</div></div>';
+            var img=s.image_url?'<div class=sign-img-wrap style=background-image:url('+escapeHtml(s.image_url)+')></div>':'<div class=no-img>无图</div>';
             return '<div class=sign-card>'+img+'</div>';
         }).join('')
         : '<div style=color:#9ca3af;font-size:0.8rem;text-align:center;padding:20px;>该场景暂无安全标志</div>';
@@ -148,20 +147,24 @@ document.getElementById('footer').textContent='安全标志图集管理系统 | 
 fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(function(results){
     var html='';
     results.forEach(function(r){ html+=renderWorkstation(r); });
-    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>'; if((new URLSearchParams(window.location.search).get('print')||'')==='1'){setTimeout(function(){window.print()},800);}
+    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>'; ,800);}
 }).catch(function(e){
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
 });
 
 function downloadPDF(){
-    // Open in new window and trigger print — user saves as PDF from print dialog
-    var ids=(new URLSearchParams(window.location.search).get('ids')||'');
-    var w=window.open('/print-workstations-batch.html?ids='+ids+'&print=1','_blank');
-    if(w){
-        w.onload=function(){
-            setTimeout(function(){ w.print(); }, 800);
-        };
-    }
+    document.querySelector('.toolbar').style.display='none';
+    var el=document.getElementById('contentArea');
+    html2pdf().set({
+        margin: 0.3,
+        filename: '安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
+        image: {type:'jpeg',quality:0.95},
+        html2canvas: {scale:2, useCORS:true, allowTaint:true, logging:false},
+        jsPDF: {unit:'in', format:'a4', orientation:'portrait'},
+        pagebreak: {mode:'avoid-all'}
+    }).from(el).save().then(function(){
+        document.querySelector('.toolbar').style.display='';
+    });
 }
 
 // Auto-trigger print if ?print=1 in URL
