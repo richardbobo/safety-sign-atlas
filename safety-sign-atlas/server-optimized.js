@@ -639,7 +639,9 @@ app.get('/api/workstations/pdf', (req, res) => {
             });
             var data = JSON.stringify(rows);
             var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
-            html = html.replace('</body>', '<script>window.__PRELOADED__=' + data + ';</script></body>');
+            // Inject preloaded data + override ids
+            html = html.replace('<script>', '<script>window.__PRELOADED__=' + data + ';');
+            html = html.replace('var ids=(new URLSearchParams', 'var ids=' + JSON.stringify(ids) + ';//');
             const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
             const page = await browser.newPage();
             await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });

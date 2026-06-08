@@ -127,21 +127,22 @@ document.getElementById('timeStr').textContent=ts;
 document.getElementById('totalCount').textContent=ids.length;
 document.getElementById('footer').textContent='安全标志图集管理系统 | '+ts;
 
-fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(function(results){
+function renderAll(results){
     var html='';
     results.forEach(function(r){html+=renderWS(r);});
     document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>';
-    var autoPrint=(new URLSearchParams(window.location.search).get('print')||'')==='1';
-    if(autoPrint){setTimeout(function(){window.print();},1000);}
-}).catch(function(e){
-    document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
-});
+}
+if(window.__PRELOADED__){
+    renderAll(window.__PRELOADED__);
+}else{
+    fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(renderAll).catch(function(e){
+        document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
+    });
+}
 
 function downloadPDF(){
-    var ids=(new URLSearchParams(window.location.search).get('ids')||'');
-    window.open('/api/workstations/pdf?ids='+ids,'_blank');
+    window.open('/api/workstations/pdf?ids='+ids.join(','),'_blank');
 }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
