@@ -617,6 +617,49 @@ app.get('/api/workstations/print', (req, res) => {
     });
 });
 
+// Puppeteer PDF生成
+app.get('/api/workstations/pdf', (req, res) => {
+    const puppeteer = require('puppeteer');
+    var ids = (req.query.ids || '').split(',').filter(Boolean).map(Number);
+    if (!ids.length) return res.status(400).send('未选择岗位');
+
+    var placeholders = ids.map(function() { return '?'; }).join(',');
+    var sql = 'SELECT w.*, s.scene_name, s.scene_code, s.department as scene_dept, ' +
+        's.location_description, s.installation_notes, s.scene_image_url, s.hazard_tags, ' +
+        "(SELECT json_group_array(json_object('id',ss.id,'sign_code',sl.sign_code,'sign_name',sl.sign_name,'sign_type',sl.sign_type,'image_url',sl.image_url)) " +
+        'FROM scene_signs ss JOIN sign_library sl ON ss.sign_id=sl.id WHERE ss.scene_id=w.scene_id) as signs_json ' +
+        'FROM workstations w LEFT JOIN scenes_new s ON w.scene_id=s.id WHERE w.id IN (' + placeholders + ')';
+
+    db.all(sql, ids, async function(err, rows) {
+        if (err) return res.status(500).send('服务器错误');
+        try {
+            rows.forEach(function(r) {
+                try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
+                delete r.signs_json;
+            });
+            var data = JSON.stringify(rows);
+            var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
+            html = html.replace('</body>', '<script>window.__PRELOADED__=' + data + ';</script></body>');
+            var tmpFile = path.join(__dirname, 'data', 'print-tmp-' + Date.now() + '.html');
+            fs.writeFileSync(tmpFile, html);
+
+            const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+            const page = await browser.newPage();
+            await page.goto('file:///' + tmpFile.replace(/\\/g, '/'), { waitUntil: 'networkidle0', timeout: 30000 });
+            const pdf = await page.pdf({ format: 'A4', margin: { top: '8mm', bottom: '8mm', left: '6mm', right: '6mm' }, printBackground: true });
+            await browser.close();
+            try { fs.unlinkSync(tmpFile); } catch(e) {}
+
+            res.setHeader('Content-Type', 'application/pdf');
+            var filename = '安全标志配置汇总_' + new Date().toISOString().slice(0,10) + '.pdf';
+            res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(filename) + '"');
+            res.send(pdf);
+        } catch(e) {
+            res.status(500).send('PDF生成失败: ' + e.message);
+        }
+    });
+});
+
 // 批量获取岗位+场景+标志（JSON API）
 app.get('/api/workstations/batch', (req, res) => {
     var ids = (req.query.ids || '').split(',').filter(Boolean).map(Number);
