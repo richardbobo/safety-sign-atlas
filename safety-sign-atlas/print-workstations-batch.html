@@ -139,11 +139,60 @@ fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.js
 });
 
 function downloadPDF(){
-    var el=document.getElementById('printContent');
+    var sections=document.querySelectorAll('.ws-section');
+    var BATCH=10;
+    if(sections.length<=BATCH){
+        doSinglePDF(document.getElementById('printContent'),'安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf');
+        return;
+    }
+    document.querySelector('.toolbar').style.display='none';
+    // Split into batches, render each as PDF, merge with pdf-lib
+    var pdfBlobs=[]; var total=sections.length; var done=0;
+    function progress(){done++;document.getElementById('content').innerHTML='<div style=text-align:center;padding:40px;color:#666>⏳ 正在生成PDF... '+done+'/'+Math.ceil(total/BATCH)+' 批</div>';}
+
+    async function processBatch(i){
+        var wrapper=document.createElement('div');
+        wrapper.style.cssText='position:absolute;left:0;top:0;width:960px;background:#fff;z-index:-1';
+        for(var j=i;j<Math.min(i+BATCH,sections.length);j++){
+            wrapper.appendChild(sections[j].cloneNode(true));
+        }
+        document.body.appendChild(wrapper);
+        var pdf=await html2pdf().set({
+            margin:0.3, image:{type:'jpeg',quality:0.95},
+            html2canvas:{scale:2,useCORS:true,allowTaint:true,logging:false},
+            jsPDF:{unit:'in',format:'a4',orientation:'portrait'},
+            pagebreak:{mode:'avoid-all'}
+        }).from(wrapper).outputPdf('arraybuffer');
+        wrapper.remove(); progress();
+        return pdf;
+    }
+
+    (async function(){
+        var allPdfs=[];
+        for(var i=0;i<sections.length;i+=BATCH){allPdfs.push(await processBatch(i));}
+        // Merge with pdf-lib
+        var merged=await PDFLib.PDFDocument.create();
+        for(var k=0;k<allPdfs.length;k++){
+            var src=await PDFLib.PDFDocument.load(allPdfs[k]);
+            var pages=await merged.copyPages(src,src.getPageIndices());
+            pages.forEach(function(p){merged.addPage(p);});
+        }
+        var mergedBytes=await merged.save();
+        var blob=new Blob([mergedBytes],{type:'application/pdf'});
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf';
+        a.click();
+        document.querySelector('.toolbar').style.display='';
+        document.getElementById('content').innerHTML='';
+        window.location.reload();
+    })();
+}
+
+function doSinglePDF(el,name){
     document.querySelector('.toolbar').style.display='none';
     html2pdf().set({
-        margin:0.3,
-        filename:'安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
+        margin:0.3, filename:name,
         image:{type:'jpeg',quality:0.95},
         html2canvas:{scale:2,useCORS:true,allowTaint:true,logging:false},
         jsPDF:{unit:'in',format:'a4',orientation:'portrait'},
@@ -154,5 +203,6 @@ function downloadPDF(){
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 </body>
 </html>
