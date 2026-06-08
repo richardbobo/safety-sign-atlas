@@ -637,18 +637,19 @@ app.get('/api/workstations/pdf', (req, res) => {
                 try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
                 delete r.signs_json;
             });
-            var baseUrl = 'http://localhost:' + PORT;
-            var data = JSON.stringify(rows).replace(/\/uploads\//g, baseUrl + '/uploads/');
+            // Use file:// paths so puppeteer loads images directly from disk (no network)
+            var uploadsPath = 'file:///' + path.join(__dirname, 'uploads').replace(/\\/g, '/') + '/';
+            var data = JSON.stringify(rows).replace(/\/uploads\//g, uploadsPath);
             var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
             // Inject preloaded data + override ids
             html = html.replace('<script>', '<script>window.__PRELOADED__=' + data + ';');
             html = html.replace('var ids=(new URLSearchParams', 'var ids=' + JSON.stringify(ids) + ';//');
-            // Fix relative image URLs for puppeteer
-            html = html.replace(/src="\/uploads\//g, 'src="' + baseUrl + '/uploads/');
-            html = html.replace(/url\(\/uploads\//g, 'url(' + baseUrl + '/uploads/');
+            // Fix relative image URLs → file:// for instant disk access
+            html = html.replace(/src="\/uploads\//g, 'src="' + uploadsPath);
+            html = html.replace(/url\(\/uploads\//g, 'url(' + uploadsPath);
             const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
             const page = await browser.newPage();
-            await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
             const pdf = await page.pdf({ format: 'A4', margin: { top: '8mm', bottom: '8mm', left: '6mm', right: '6mm' }, printBackground: true });
             await browser.close();
 
