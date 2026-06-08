@@ -91,20 +91,21 @@ function sortSignsByType(signs) {
     return signs.slice().sort(function(a,b) { return (o[a.sign_type]||99)-(o[b.sign_type]||99); });
 }
 
-function renderWorkstation(ws, scene) {
+function renderWorkstation(r) {
+    var hazardTags=r.hazard_tags||'';
     var tagsHtml='';
-    if (scene.hazard_tags) {
-        scene.hazard_tags.split(',').filter(function(t){return t.trim();}).forEach(function(t){
+    if (hazardTags) {
+        hazardTags.split(',').filter(function(t){return t.trim();}).forEach(function(t){
             t=t.trim(); var n=tm[t]||(t.startsWith('custom_')?'已删除':t); var c=tc[t]||'#667eea';
             tagsHtml+='<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+escapeHtml(n)+'</span>';
         });
     }
 
-    var sceneImg=scene.scene_image_url
-        ? '<img src="'+scene.scene_image_url+'" alt=场景图片 onerror="this.style.display=\'none\'">'
+    var sceneImg=r.scene_image_url
+        ? '<img src="'+r.scene_image_url+'" alt=场景图片 onerror="this.style.display=\'none\'">'
         : '<div class=placeholder>暂无场景图片</div>';
 
-    var signs=sortSignsByType(scene.signs||[]);
+    var signs=sortSignsByType(r.signs||[]);
     var gridClass=signs.length<=4?'col2':signs.length<=8?'col3':'';
     var signsHtml=signs.length
         ? signs.map(function(s){
@@ -117,20 +118,22 @@ function renderWorkstation(ws, scene) {
     var typeCounts={}; signs.forEach(function(s){typeCounts[s.sign_type]=(typeCounts[s.sign_type]||0)+1;});
     var typeBadges=Object.entries(typeCounts).map(function(e){return '<span style=display:inline-block;padding:1px 6px;border-radius:4px;font-size:0.7rem;margin:1px;background:#e0e7ff;color:#3730a3;>'+typeNames[e[0]]+': '+e[1]+'</span>';}).join('');
 
+    var dept=r.department||r.scene_dept||'';
+
     return '<div class=ws-section>'+
         '<div class=ws-header>'+
-            '<div><div class=ws-name>'+escapeHtml(ws.workstation_name)+'</div>'+
-            '<div class=ws-code>'+escapeHtml(ws.workstation_code)+' | '+escapeHtml(ws.department||'')+' | '+escapeHtml(ws.location||'')+'</div></div>'+
-            '<div class=ws-scene>场景: '+escapeHtml(scene.scene_name)+' ('+escapeHtml(scene.scene_code)+') &nbsp; 标志: '+signs.length+'个 '+typeBadges+'</div>'+
+            '<div><div class=ws-name>'+escapeHtml(r.workstation_name)+'</div>'+
+            '<div class=ws-code>'+escapeHtml(r.workstation_code)+' | '+escapeHtml(dept)+' | '+escapeHtml(r.location||'')+'</div></div>'+
+            '<div class=ws-scene>场景: '+escapeHtml(r.scene_name)+' ('+escapeHtml(r.scene_code)+') &nbsp; 标志: '+signs.length+'个 '+typeBadges+'</div>'+
         '</div>'+
         (tagsHtml?'<div style=margin-bottom:8px;>'+tagsHtml+'</div>':'')+
         '<div class=main>'+
             '<div class=left><div class=scene-img>'+sceneImg+'</div>'+
             '<table class=info-table>'+
-            '<tr><td>岗位编码</td><td>'+escapeHtml(ws.workstation_code)+'</td></tr>'+
-            '<tr><td>所属部门</td><td>'+escapeHtml(ws.department||'未设置')+'</td></tr>'+
-            '<tr><td>具体位置</td><td>'+escapeHtml(ws.location||'未设置')+'</td></tr>'+
-            '<tr><td>备注</td><td>'+escapeHtml(ws.notes||'无')+'</td></tr></table></div>'+
+            '<tr><td>岗位编码</td><td>'+escapeHtml(r.workstation_code)+'</td></tr>'+
+            '<tr><td>所属部门</td><td>'+escapeHtml(dept||'未设置')+'</td></tr>'+
+            '<tr><td>具体位置</td><td>'+escapeHtml(r.location||'未设置')+'</td></tr>'+
+            '<tr><td>备注</td><td>'+escapeHtml(r.notes||'无')+'</td></tr></table></div>'+
             '<div class=right><div class="signs-grid '+gridClass+'">'+signsHtml+'</div></div>'+
         '</div></div>';
 }
@@ -142,15 +145,9 @@ document.getElementById('timeStr').textContent=ts;
 document.getElementById('totalCount').textContent=ids.length;
 document.getElementById('footer').textContent='安全标志图集管理系统 | '+ts;
 
-Promise.all(ids.map(function(id){
-    return fetch(API+'/workstations/'+id).then(function(r){return r.json();}).then(function(ws){
-        return fetch(API+'/scenes/'+ws.scene_id).then(function(r){return r.json();}).then(function(scene){
-            return {ws:ws, scene:scene};
-        });
-    });
-})).then(function(results){
+fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(function(results){
     var html='';
-    results.forEach(function(r){ html+=renderWorkstation(r.ws, r.scene); });
+    results.forEach(function(r){ html+=renderWorkstation(r); });
     document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>'; if((new URLSearchParams(window.location.search).get('print')||'')==='1'){setTimeout(function(){window.print()},800);}
 }).catch(function(e){
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
