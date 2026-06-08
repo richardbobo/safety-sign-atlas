@@ -43,27 +43,10 @@
     .footer{border-top:1px solid #e5e7eb;padding-top:8px;font-size:10px;color:#9ca3af;text-align:center;margin-top:16px;}
 
     @media print{
-        @page{margin:8mm}
         .toolbar{display:none}
-        body{padding:0;max-width:100%;}
-        .report-title{padding-bottom:4px;margin-bottom:6px}
-        .report-title h1{font-size:16px}
-        .report-title .sub{font-size:10px}
-        .ws-section{page-break-after:always;page-break-inside:avoid;margin-bottom:0;padding:6px 10px;border-width:1px}
+        body{padding:8px 12px;max-width:100%;}
+        .ws-section{page-break-after:always;margin-bottom:8px}
         .ws-section:last-child{page-break-after:auto}
-        .ws-header{padding-bottom:3px;margin-bottom:4px}
-        .ws-header .ws-name{font-size:13px}
-        .ws-header .ws-code,.ws-header .ws-scene{font-size:9px}
-        .main{gap:6px;margin-top:4px}
-        .left{flex:0 0 35%}
-        .left .scene-img img{max-height:100px}
-        .info-table{font-size:8px;margin-top:4px}
-        .info-table td{padding:1px 3px}
-        .signs-grid{gap:2px;grid-template-columns:repeat(4,1fr)}
-        .sign-card .img-cell{height:55px}
-        .sign-card .no-img{height:55px;font-size:0.5rem}
-        .tag{font-size:8px;padding:1px 4px}
-        .footer{padding-top:4px;font-size:8px;margin-top:4px}
     }
 </style>
 </head>
@@ -162,7 +145,7 @@ function downloadPDF(){
         image:{type:'jpeg',quality:0.95},
         html2canvas:{scale:2,useCORS:true,allowTaint:true,logging:false},
         jsPDF:{unit:'in',format:'a4',orientation:'portrait'},
-        pagebreak:{mode:'avoid-all'}
+        pagebreak:{mode:'legacy'}
     }).from(el).save().then(function(){
         document.querySelector('.toolbar').style.display='';
     });
