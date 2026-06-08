@@ -30,7 +30,9 @@
     .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
     .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
     .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;text-align:center;}
-    .sign-card img{width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;}
+    .sign-card{display:flex;align-items:center;justify-content:center}
+    .sign-card img{width:100%;height:auto;max-height:90px;border-radius:3px;background:#f9fafb;}
+    .sign-card .no-img{height:60px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.7rem;}
     .sign-card .sign-label{font-size:8px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
     .info-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;}
@@ -106,7 +108,7 @@ function renderWorkstation(ws, scene) {
     var gridClass=signs.length<=4?'col2':signs.length<=8?'col3':'';
     var signsHtml=signs.length
         ? signs.map(function(s){
-            var img=s.image_url?'<img src="'+escapeHtml(s.image_url)+'" onerror="this.style.display=\'none\'" alt="'+escapeHtml(s.sign_name)+'">':'<div style=height:90px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.7rem;>无图</div>';
+            var img=s.image_url?'<img src="'+escapeHtml(s.image_url)+'" onerror="this.parentElement.innerHTML=\'<div class=no-img>无图</div>\'" alt="'+escapeHtml(s.sign_name)+'">':'<div class=no-img>无图</div>';
             return '<div class=sign-card>'+img+'<div class=sign-label>'+escapeHtml(s.sign_code)+'</div></div>';
         }).join('')
         : '<div style=color:#9ca3af;font-size:0.8rem;text-align:center;padding:20px;>该场景暂无安全标志</div>';
