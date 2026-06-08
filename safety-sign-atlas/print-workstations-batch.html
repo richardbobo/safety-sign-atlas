@@ -138,53 +138,18 @@ fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.js
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
 });
 
-var BATCH_SIZE=10;
-
 function downloadPDF(){
-    if(ids.length <= BATCH_SIZE){
-        doDownloadPDF(document.getElementById('printContent'), '安全标志配置汇总');
-        return;
-    }
-    // Split into batches
-    var sections=document.querySelectorAll('.ws-section');
-    var batches=[], batchEls=[];
-    for(var i=0;i<sections.length;i+=BATCH_SIZE){
-        var wrapper=document.createElement('div');
-        wrapper.id='printContent';
-        for(var j=i;j<Math.min(i+BATCH_SIZE,sections.length);j++){
-            wrapper.appendChild(sections[j].cloneNode(true));
-        }
-        document.body.appendChild(wrapper);
-        wrapper.style.cssText='position:absolute;left:-9999px;top:0;width:960px';
-        batches.push(wrapper);
-    }
+    var el=document.getElementById('printContent');
     document.querySelector('.toolbar').style.display='none';
-    document.getElementById('printContent').style.display='none';
-    processBatches(0, batches);
-}
-
-function processBatches(i, batches){
-    if(i>=batches.length){
-        document.querySelector('.toolbar').style.display='';
-        document.getElementById('printContent').style.display='';
-        batches.forEach(function(b){b.remove();});
-        return;
-    }
-    doDownloadPDF(batches[i], '安全标志配置汇总_第'+(i+1)+'批', function(){
-        processBatches(i+1, batches);
-    });
-}
-
-function doDownloadPDF(el, name, cb){
     html2pdf().set({
         margin:0.3,
-        filename:name+'_'+(new Date().toISOString().slice(0,10))+'.pdf',
+        filename:'安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
         image:{type:'jpeg',quality:0.95},
         html2canvas:{scale:2,useCORS:true,allowTaint:true,logging:false},
         jsPDF:{unit:'in',format:'a4',orientation:'portrait'},
         pagebreak:{mode:'avoid-all'}
     }).from(el).save().then(function(){
-        if(cb) setTimeout(cb, 500);
+        document.querySelector('.toolbar').style.display='';
     });
 }
 </script>
