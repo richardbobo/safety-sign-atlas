@@ -33,7 +33,7 @@
     .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
     .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
     .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;}
-    .sign-card .img-cell{width:100%;height:110px;background-color:#f9fafb;background-size:contain;background-repeat:no-repeat;background-position:center;border-radius:3px}
+    .sign-card .img-cell{width:100%;height:110px;background-color:#f9fafb;background-size:contain;background-repeat:no-repeat;background-position:center;border-radius:3px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .sign-card .no-img{height:110px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.65rem;background:#f9fafb;border-radius:3px}
 
     .info-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;}
@@ -48,6 +48,7 @@
         .ws-section{break-inside:avoid;margin-bottom:16px;padding:12px 14px;}
         .main{gap:10px;}
         .signs-grid{gap:4px;}
+        .img-cell{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     }
 </style>
 </head>
