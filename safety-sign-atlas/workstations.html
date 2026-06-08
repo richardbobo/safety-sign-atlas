@@ -400,11 +400,20 @@ function toggleSelectAll(el){
     document.querySelectorAll('.ws-check').forEach(function(cb){cb.checked=el.checked;});
 }
 
+var printFrame=null;
+
 function printSelectedWS(){
     var ids=[];
     document.querySelectorAll('.ws-check:checked').forEach(function(cb){ids.push(cb.value);});
     if(!ids.length){showMsg('error','请先勾选至少一个工作岗位');return;}
-    window.open('/print-workstations-batch.html?ids='+ids.join(','),'_blank');
+    if(printFrame){printFrame.remove();}
+    printFrame=document.createElement('iframe');
+    printFrame.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:#fff';
+    printFrame.src='/api/workstations/print?ids='+ids.join(',');
+    printFrame.onload=function(){
+        setTimeout(function(){printFrame.contentWindow.print();},500);
+    };
+    document.body.appendChild(printFrame);
 }
 
 function generateBOM(){

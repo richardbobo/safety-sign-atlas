@@ -590,7 +590,34 @@ app.delete('/api/scene-signs/:id', (req, res) => {
 
 // ==================== 工作岗位管理API ====================
 
-// 批量获取岗位+场景+标志（用于批量打印，一次请求返回全部数据）
+// 批量打印 — 返回预渲染HTML，数据内嵌
+app.get('/api/workstations/print', (req, res) => {
+    var ids = (req.query.ids || '').split(',').filter(Boolean).map(Number);
+    if (!ids.length) return res.send('<h3>未选择岗位</h3>');
+
+    var placeholders = ids.map(function() { return '?'; }).join(',');
+    var sql = 'SELECT w.*, s.scene_name, s.scene_code, s.department as scene_dept, ' +
+        's.location_description, s.installation_notes, s.scene_image_url, s.hazard_tags, ' +
+        "(SELECT json_group_array(json_object('id',ss.id,'sign_code',sl.sign_code,'sign_name',sl.sign_name,'sign_type',sl.sign_type,'image_url',sl.image_url)) " +
+        'FROM scene_signs ss JOIN sign_library sl ON ss.sign_id=sl.id WHERE ss.scene_id=w.scene_id) as signs_json ' +
+        'FROM workstations w LEFT JOIN scenes_new s ON w.scene_id=s.id WHERE w.id IN (' + placeholders + ')';
+
+    db.all(sql, ids, function(err, rows) {
+        if (err) return res.status(500).send('服务器错误');
+        rows.forEach(function(r) {
+            try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
+            delete r.signs_json;
+        });
+        var data = JSON.stringify(rows);
+        var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
+        // Inject data before the closing </body>
+        html = html.replace('</body>', '<script>window.__PRELOADED__=' + data + ';</script></body>');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+    });
+});
+
+// 批量获取岗位+场景+标志（JSON API）
 app.get('/api/workstations/batch', (req, res) => {
     var ids = (req.query.ids || '').split(',').filter(Boolean).map(Number);
     if (!ids.length) return res.json([]);

@@ -128,20 +128,25 @@ document.getElementById('timeStr').textContent=ts;
 document.getElementById('totalCount').textContent=ids.length;
 document.getElementById('footer').textContent='安全标志图集管理系统 | '+ts;
 
-fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(function(results){
+function loadDataAndRender(results){
     var html='';
     results.forEach(function(r){html+=renderWS(r);});
     document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>';
-    var autoPrint=(new URLSearchParams(window.location.search).get('print')||'')==='1';
-    if(autoPrint){setTimeout(function(){window.print();},1000);}
-}).catch(function(e){
-    document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
-});
+}
+
+if(window.__PRELOADED__){
+    // Data already embedded in HTML by server — instant render
+    loadDataAndRender(window.__PRELOADED__);
+}else{
+    // Fallback: fetch via API
+    fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(loadDataAndRender).catch(function(e){
+        document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
+    });
+}
 
 function downloadPDF(){
-    var url=window.location.href.replace(/&print=1/,'').replace(/\\?print=1/,'?');
-    if(url.indexOf('?')<0)url+='?print=1';else url+='&print=1';
-    window.open(url,'_blank');
+    var ids=(new URLSearchParams(window.location.search).get('ids')||'');
+    window.open('/api/workstations/print?ids='+ids,'_blank');
 }
 </script>
 </body>
