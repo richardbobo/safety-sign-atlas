@@ -147,7 +147,7 @@ document.getElementById('footer').textContent='安全标志图集管理系统 | 
 fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.json();}).then(function(results){
     var html='';
     results.forEach(function(r){ html+=renderWorkstation(r); });
-    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>'; ,800);}
+    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>';}
 }).catch(function(e){
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
 });
