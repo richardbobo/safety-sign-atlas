@@ -596,11 +596,11 @@ app.get('/api/workstations/batch', (req, res) => {
     if (!ids.length) return res.json([]);
 
     var placeholders = ids.map(function() { return '?'; }).join(',');
-    var sql = 'SELECT w.*, s.scene_name, s.scene_code, s.department as scene_dept, ' +
+    var sql = 'SELECT w.id as wid, w.workstation_code, w.workstation_name, w.scene_id, ' +
+        'w.department, w.location, w.notes, w.created_at, w.updated_at, ' +
+        's.scene_name, s.scene_code, s.department as scene_dept, ' +
         's.location_description, s.installation_notes, s.scene_image_url, s.hazard_tags, ' +
-        '(SELECT json_group_array(json_object(' +
-        '\"id\",ss.id,\"sign_code\",sl.sign_code,\"sign_name\",sl.sign_name,' +
-        '\"sign_type\",sl.sign_type,\"image_url\",sl.image_url)) ' +
+        "(SELECT json_group_array(json_object('id',ss.id,'sign_code',sl.sign_code,'sign_name',sl.sign_name,'sign_type',sl.sign_type,'image_url',sl.image_url)) " +
         'FROM scene_signs ss JOIN sign_library sl ON ss.sign_id=sl.id WHERE ss.scene_id=w.scene_id) as signs_json ' +
         'FROM workstations w LEFT JOIN scenes_new s ON w.scene_id=s.id WHERE w.id IN (' + placeholders + ')';
 
