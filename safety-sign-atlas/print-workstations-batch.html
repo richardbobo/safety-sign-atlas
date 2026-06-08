@@ -89,11 +89,11 @@ function renderWS(r){
             tags+='<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+esc(n)+'</span>';
         });
     }
-    var sceneImg=r.scene_image_url?'<img src="'+esc(r.scene_image_url)+'" alt=场景图片>':'<div class=placeholder>暂无场景图片</div>';
+    var sceneImg=r.scene_image_url?'<img src="'+esc(r.scene_image_url)+'" loading=lazy alt=场景图片>':'<div class=placeholder>暂无场景图片</div>';
     var signs=sortByType(r.signs||[]);
     var gc=signs.length<=4?'col2':signs.length<=8?'col3':'';
     var sh=signs.length?signs.map(function(s){
-        var ic=s.image_url?'<div class=img-cell><img src="'+esc(s.image_url)+'"></div>':'<div class=no-img>无图</div>';
+        var ic=s.image_url?'<div class=img-cell><img src="'+esc(s.image_url)+'" loading=lazy>':'<div class=no-img>无图</div>';
         return '<div class=sign-card>'+ic+'</div>';
     }).join(''):'<div style=color:#9ca3af;font-size:0.8rem;text-align:center;padding:20px;>该场景暂无安全标志</div>';
 

@@ -411,7 +411,7 @@ function printSelectedWS(){
     printFrame.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:#fff';
     printFrame.src='/api/workstations/print?ids='+ids.join(',');
     printFrame.onload=function(){
-        setTimeout(function(){printFrame.contentWindow.print();},500);
+        setTimeout(function(){printFrame.contentWindow.print();},1500);
     };
     document.body.appendChild(printFrame);
 }
