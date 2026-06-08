@@ -29,11 +29,10 @@
     .signs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
     .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
     .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
-    .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;text-align:center;}
-    .sign-card{display:flex;align-items:center;justify-content:center;min-height:90px}
-    .sign-card img{width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;}
-    .sign-card .no-img{height:90px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.7rem;}
-    .sign-card .sign-label{font-size:8px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .sign-card .sign-img-wrap{width:100%;height:80px;display:flex;align-items:center;justify-content:center;background:#f9fafb;border-radius:3px;overflow:hidden}
+    .sign-card img{width:100%;height:100%;object-fit:contain}
+    .sign-card .no-img{width:100%;height:80px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.65rem;background:#f9fafb;border-radius:3px}
 
     .info-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;}
     .info-table td{padding:2px 6px;border:1px solid #e5e7eb;}
@@ -109,8 +108,8 @@ function renderWorkstation(r) {
     var gridClass=signs.length<=4?'col2':signs.length<=8?'col3':'';
     var signsHtml=signs.length
         ? signs.map(function(s){
-            var img=s.image_url?'<img src="'+escapeHtml(s.image_url)+'" onerror="this.parentElement.innerHTML=\'<div class=no-img>无图</div>\'" alt="'+escapeHtml(s.sign_name)+'">':'<div class=no-img>无图</div>';
-            return '<div class=sign-card>'+img+'<div class=sign-label>'+escapeHtml(s.sign_code)+'</div></div>';
+            var img=s.image_url?'<div class=sign-img-wrap><img src="'+escapeHtml(s.image_url)+'" onerror="this.parentElement.innerHTML=\'<div class=no-img>无图</div>\'" alt="'+escapeHtml(s.sign_name)+'"></div>':'<div class=sign-img-wrap><div class=no-img>无图</div></div>';
+            return '<div class=sign-card>'+img+'</div>';
         }).join('')
         : '<div style=color:#9ca3af;font-size:0.8rem;text-align:center;padding:20px;>该场景暂无安全标志</div>';
 
