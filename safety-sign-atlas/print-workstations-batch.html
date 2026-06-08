@@ -55,7 +55,6 @@
 <div class="toolbar">
     <button class="btn-pdf" onclick="downloadPDF()">📥 下载PDF</button>
     <button class="btn-print" onclick="window.print()">🖨️ 打印</button>
-	    <button style="background:#059669;color:#fff" onclick="downloadHTML()">🌐 导出HTML</button>
 </div>
 <div id="printContent">
 <div class="report-title">
@@ -138,7 +137,7 @@ fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.js
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
 });
 
-function downloadHTML(){var h=document.getElementById("printContent").outerHTML;var t="<html><head><meta charset=utf-8><title>安全标志配置汇总</title><style>"+document.querySelector("style").innerHTML+"</style></head><body style=padding:24px 28px;max-width:960px;margin:0 auto>"+h+"</body></html>";var b=new Blob([t],{type:"text/html;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="安全标志配置汇总_"+(new Date().toISOString().slice(0,10))+".html";a.click()}function downloadPDF(){
+function downloadPDF(){
     var el=document.getElementById('printContent');
     document.querySelector('.toolbar').style.display='none';
     html2pdf().set({
