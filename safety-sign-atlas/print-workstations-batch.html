@@ -66,13 +66,11 @@
 <div class="footer" id="footer"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 var API='/api';
 var ids=(new URLSearchParams(window.location.search).get('ids')||'').split(',').filter(Boolean);
 
 function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):'';}
-function escUrl(s){return s?String(s).replace(/&/g,'&amp;').replace(/"/g,'%22').replace(/'/g,'%27'):'';}
 
 var tm={electric:'触电危险',fire:'火灾危险',chemical:'化学品危险',mechanical:'机械伤害',fall:'坠落危险',noise:'噪音危害',dust:'粉尘危害',radiation:'辐射危险',high_temp:'高温烫伤',low_temp:'低温冻伤',slippery:'滑倒危险',confined:'受限空间'};
 var tc={electric:'#92400e',fire:'#dc2626',chemical:'#7c3aed',mechanical:'#ea580c',fall:'#059669',noise:'#b91c1c',dust:'#92400e',radiation:'#a21caf',high_temp:'#ea580c',low_temp:'#0891b2',slippery:'#ca8a04',confined:'#6d28d9'};
@@ -91,11 +89,11 @@ function renderWS(r){
             tags+='<span class=tag style=background:'+c+'20;color:'+c+';border:1px solid '+c+';>'+esc(n)+'</span>';
         });
     }
-    var sceneImg=r.scene_image_url?'<img src="'+escUrl(r.scene_image_url)+'" alt=场景图片>':'<div class=placeholder>暂无场景图片</div>';
+    var sceneImg=r.scene_image_url?'<img src="'+esc(r.scene_image_url)+'" alt=场景图片>':'<div class=placeholder>暂无场景图片</div>';
     var signs=sortByType(r.signs||[]);
     var gc=signs.length<=4?'col2':signs.length<=8?'col3':'';
     var sh=signs.length?signs.map(function(s){
-        var ic=s.image_url?'<div class=img-cell><img src="'+escUrl(s.image_url)+'"></div>':'<div class=no-img>无图</div>';
+        var ic=s.image_url?'<div class=img-cell><img src="'+esc(s.image_url)+'"></div>':'<div class=no-img>无图</div>';
         return '<div class=sign-card>'+ic+'</div>';
     }).join(''):'<div style=color:#9ca3af;font-size:0.8rem;text-align:center;padding:20px;>该场景暂无安全标志</div>';
 
@@ -134,23 +132,16 @@ fetch(API+'/workstations/batch?ids='+ids.join(',')).then(function(r){return r.js
     var html='';
     results.forEach(function(r){html+=renderWS(r);});
     document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>';
+    var autoPrint=(new URLSearchParams(window.location.search).get('print')||'')==='1';
+    if(autoPrint){setTimeout(function(){window.print();},1000);}
 }).catch(function(e){
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
 });
 
 function downloadPDF(){
-    document.querySelector('.toolbar').style.display='none';
-    var el=document.getElementById('printContent');
-    html2pdf().set({
-        margin:0.3,
-        filename:'安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
-        image:{type:'jpeg',quality:0.95},
-        html2canvas:{scale:2,useCORS:true,allowTaint:true,logging:false},
-        jsPDF:{unit:'in',format:'a4',orientation:'portrait'},
-        pagebreak:{mode:'avoid-all'}
-    }).from(el).save().then(function(){
-        document.querySelector('.toolbar').style.display='';
-    });
+    var url=window.location.href.replace(/&print=1/,'').replace(/\\?print=1/,'?');
+    if(url.indexOf('?')<0)url+='?print=1';else url+='&print=1';
+    window.open(url,'_blank');
 }
 </script>
 </body>
