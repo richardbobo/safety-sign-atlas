@@ -637,11 +637,15 @@ app.get('/api/workstations/pdf', (req, res) => {
                 try { r.signs = JSON.parse(r.signs_json || '[]'); } catch(e) { r.signs = []; }
                 delete r.signs_json;
             });
-            var data = JSON.stringify(rows);
+            var baseUrl = 'http://localhost:' + PORT;
+            var data = JSON.stringify(rows).replace(/\/uploads\//g, baseUrl + '/uploads/');
             var html = fs.readFileSync(path.join(__dirname, 'print-workstations-batch.html'), 'utf8');
             // Inject preloaded data + override ids
             html = html.replace('<script>', '<script>window.__PRELOADED__=' + data + ';');
             html = html.replace('var ids=(new URLSearchParams', 'var ids=' + JSON.stringify(ids) + ';//');
+            // Fix relative image URLs for puppeteer
+            html = html.replace(/src="\/uploads\//g, 'src="' + baseUrl + '/uploads/');
+            html = html.replace(/url\(\/uploads\//g, 'url(' + baseUrl + '/uploads/');
             const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
             const page = await browser.newPage();
             await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
