@@ -30,9 +30,9 @@
     .signs-grid.col3{grid-template-columns:repeat(3,1fr);}
     .signs-grid.col2{grid-template-columns:repeat(2,1fr);}
     .sign-card{border:1px solid #e5e7eb;border-radius:5px;padding:4px;background:#fff;text-align:center;}
-    .sign-card{display:flex;align-items:center;justify-content:center}
-    .sign-card img{width:100%;height:auto;max-height:90px;border-radius:3px;background:#f9fafb;}
-    .sign-card .no-img{height:60px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.7rem;}
+    .sign-card{display:flex;align-items:center;justify-content:center;min-height:90px}
+    .sign-card img{width:100%;height:90px;object-fit:contain;border-radius:3px;background:#f9fafb;}
+    .sign-card .no-img{height:90px;display:flex;align-items:center;justify-content:center;color:#d1d5db;font-size:0.7rem;}
     .sign-card .sign-label{font-size:8px;color:#9ca3af;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
     .info-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:10px;}
@@ -151,38 +151,26 @@ Promise.all(ids.map(function(id){
 })).then(function(results){
     var html='';
     results.forEach(function(r){ html+=renderWorkstation(r.ws, r.scene); });
-    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>';
+    document.getElementById('content').innerHTML=html||'<div style=text-align:center;color:#999;padding:40px;>暂无数据</div>'; if((new URLSearchParams(window.location.search).get('print')||'')==='1'){setTimeout(function(){window.print()},800);}
 }).catch(function(e){
     document.getElementById('content').innerHTML='<div style=color:#dc3545;text-align:center;padding:40px;>加载失败: '+e.message+'</div>';
 });
 
 function downloadPDF(){
-    var btn=document.querySelector('.toolbar');
-    btn.style.display='none';
-    // Wait for all images to load before capturing
-    var imgs=document.querySelectorAll('img');
-    var promises=[];
-    imgs.forEach(function(img){
-        if(!img.complete){
-            promises.push(new Promise(function(resolve){
-                img.onload=img.onerror=resolve;
-            }));
-        }
-    });
-    Promise.all(promises).then(function(){
-        var el=document.getElementById('contentArea');
-        var opt={
-            margin: 0.2,
-            filename: '安全标志配置汇总_'+(new Date().toISOString().slice(0,10))+'.pdf',
-            image: {type:'jpeg',quality:0.95},
-            html2canvas: {scale:2, useCORS:true, allowTaint:true},
-            jsPDF: {unit:'in', format:'a4', orientation:'portrait'},
-            pagebreak: {mode:'avoid-all'}
+    // Open in new window and trigger print — user saves as PDF from print dialog
+    var ids=(new URLSearchParams(window.location.search).get('ids')||'');
+    var w=window.open('/print-workstations-batch.html?ids='+ids+'&print=1','_blank');
+    if(w){
+        w.onload=function(){
+            setTimeout(function(){ w.print(); }, 800);
         };
-        html2pdf().set(opt).from(el).save().then(function(){ btn.style.display=''; });
-    });
+    }
+}
+
+// Auto-trigger print if ?print=1 in URL
+if((new URLSearchParams(window.location.search).get('print')||'')==='1'){
+    
 }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
