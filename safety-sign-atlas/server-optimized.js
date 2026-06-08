@@ -653,7 +653,7 @@ app.get('/api/workstations/pdf', (req, res) => {
             res.setHeader('Content-Type', 'application/pdf');
             var filename = '安全标志配置汇总_' + new Date().toISOString().slice(0,10) + '.pdf';
             res.setHeader('Content-Disposition', 'attachment; filename="' + encodeURIComponent(filename) + '"');
-            res.send(pdf);
+            res.end(Buffer.from(pdf));
         } catch(e) {
             res.status(500).send('PDF生成失败: ' + e.message);
         }
